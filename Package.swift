@@ -9,11 +9,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Marmot",
-            path: "Sources/Marmot",
-            swiftSettings: [
-                // Surfaces data-race risks ahead of Swift 6 (warnings only).
-                .enableExperimentalFeature("StrictConcurrency")
-            ]
+            path: "Sources/Marmot"
         ),
         .testTarget(
             name: "MarmotTests",
