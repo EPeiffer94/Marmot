@@ -1,5 +1,10 @@
 import Foundation
 
+/// Written from exactly one drain thread, read only after the group waits.
+private final class DataBox: @unchecked Sendable {
+    var data = Data()
+}
+
 enum Shell {
     struct Output {
         let status: Int32
@@ -19,8 +24,8 @@ enum Shell {
         process.standardOutput = out
         process.standardError = err
 
-        var outData = Data()
-        var errData = Data()
+        let outBox = DataBox()
+        let errBox = DataBox()
         let drainGroup = DispatchGroup()
         let finished = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in finished.signal() }
@@ -33,12 +38,12 @@ enum Shell {
 
         drainGroup.enter()
         DispatchQueue.global(qos: .utility).async {
-            outData = out.fileHandleForReading.readDataToEndOfFile()
+            outBox.data = out.fileHandleForReading.readDataToEndOfFile()
             drainGroup.leave()
         }
         drainGroup.enter()
         DispatchQueue.global(qos: .utility).async {
-            errData = err.fileHandleForReading.readDataToEndOfFile()
+            errBox.data = err.fileHandleForReading.readDataToEndOfFile()
             drainGroup.leave()
         }
 
@@ -52,8 +57,8 @@ enum Shell {
         drainGroup.wait()
 
         return Output(status: process.terminationStatus,
-                      stdout: String(data: outData, encoding: .utf8) ?? "",
-                      stderr: String(data: errData, encoding: .utf8) ?? "")
+                      stdout: String(data: outBox.data, encoding: .utf8) ?? "",
+                      stderr: String(data: errBox.data, encoding: .utf8) ?? "")
     }
 
     /// Run a shell one-liner via /bin/zsh -c.

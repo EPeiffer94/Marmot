@@ -8,6 +8,7 @@ import Combine
 /// builds it enters an endless main-menu rebuild loop (scenesDidChange →
 /// makeMainMenu → requestUpdate → …) that pegs the main thread. A plain
 /// status item sidesteps that machinery entirely.
+@MainActor
 final class StatusItemController: NSObject {
 
     private var statusItem: NSStatusItem?
@@ -34,21 +35,22 @@ final class StatusItemController: NSObject {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] cpu in
-                self?.statusItem?.button?.title = " \(cpu)%"
+                Task { @MainActor [weak self] in
+                    self?.statusItem?.button?.title = " \(cpu)%"
+                }
             }
             .store(in: &cancellables)
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(self)
     }
 
     private var hudEnabled: Bool {
         UserDefaults.standard.object(forKey: "marmot.hudEnabled") as? Bool ?? true
     }
 
-    @objc private func defaultsChanged() {
-        DispatchQueue.main.async { [weak self] in self?.syncVisibility() }
+    /// UserDefaults notifications can arrive on any thread; hop to the actor.
+    nonisolated @objc private func defaultsChanged() {
+        Task { @MainActor [weak self] in
+            self?.syncVisibility()
+        }
     }
 
     private func syncVisibility() {
