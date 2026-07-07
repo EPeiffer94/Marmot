@@ -67,10 +67,33 @@ final class PlanExecutor {
                 return ItemResult(item: item, outcome: .done, detail: "Deleted.")
             }
         } catch {
-            // Trash can fail for items on other volumes; fall back to delete
-            // only if the user chose permanent deletion. Otherwise report.
+            // Direct trashing fails for root-owned items (e.g. apps installed
+            // by an installer package). Finder can trash those — it shows the
+            // standard admin prompt itself and the item stays recoverable.
+            if item.action == .moveToTrash {
+                let finder = trashViaFinder(path)
+                if finder.succeeded {
+                    return ItemResult(item: item, outcome: .done, detail: "Moved to Trash via Finder.")
+                }
+                let hint = finder.stderr.contains("-1743")
+                    ? " Allow Marmot to control Finder in System Settings → Privacy & Security → Automation, then retry."
+                    : ""
+                return ItemResult(item: item, outcome: .failed,
+                                  detail: (error.localizedDescription + " Finder fallback: \(finder.stderr.trimmingCharacters(in: .whitespacesAndNewlines))" + hint))
+            }
             return ItemResult(item: item, outcome: .failed, detail: error.localizedDescription)
         }
+    }
+
+    /// Trash an item through Finder. Finder handles privileged items by
+    /// showing the standard macOS admin prompt, and the result is a normal,
+    /// recoverable Trash entry. Requires the one-time Automation permission.
+    private static func trashViaFinder(_ path: String) -> Shell.Output {
+        let escaped = path
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let script = "tell application \"Finder\" to delete (POSIX file \"\(escaped)\" as alias)"
+        return Shell.run("/usr/bin/osascript", ["-e", script], timeout: 120)
     }
 
     private static func runCommand(_ item: ChangeItem, dryRun: Bool) -> ItemResult {
