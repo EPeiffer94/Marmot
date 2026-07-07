@@ -13,6 +13,7 @@ struct PlanPreviewView: View {
 
     @State var plan: ChangePlan
     var allowPurgeRoots = false
+    var allowUserFiles = false
     var onDismiss: (ExecutionResult?) -> Void
 
     @State private var phase: Phase = .reviewing
@@ -279,8 +280,11 @@ struct PlanPreviewView: View {
         phase = .running(progress: 0, current: "Starting…")
         let planCopy = plan
         let purge = allowPurgeRoots
+        let userFiles = allowUserFiles
         Task {
-            let result = await PlanExecutor.execute(planCopy, dryRun: dryRun, allowPurgeRoots: purge) { progress, name in
+            let result = await PlanExecutor.execute(planCopy, dryRun: dryRun,
+                                                    allowPurgeRoots: purge,
+                                                    allowUserFiles: userFiles) { progress, name in
                 Task { @MainActor in
                     phase = .running(progress: progress, current: name)
                 }

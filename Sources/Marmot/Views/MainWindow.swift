@@ -3,8 +3,11 @@ import SwiftUI
 enum SidebarSection: String, CaseIterable, Identifiable {
     case cleanup = "Cleanup"
     case uninstall = "Uninstaller"
+    case unusedApps = "Unused Apps"
     case updates = "App Updates"
+    case duplicates = "Duplicates"
     case diskMap = "Disk Map"
+    case startup = "Startup Items"
     case maintenance = "Maintenance"
     case status = "Live Status"
     case history = "History"
@@ -15,8 +18,11 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         switch self {
         case .cleanup: return "sparkles"
         case .uninstall: return "trash.square"
+        case .unusedApps: return "hourglass"
         case .updates: return "arrow.down.app"
+        case .duplicates: return "doc.on.doc"
         case .diskMap: return "square.grid.3x3.topleft.filled"
+        case .startup: return "power"
         case .maintenance: return "wrench.and.screwdriver"
         case .status: return "gauge.with.needle"
         case .history: return "clock.arrow.circlepath"
@@ -42,8 +48,11 @@ struct MainWindow: View {
             switch selection ?? .cleanup {
             case .cleanup: CleanupView()
             case .uninstall: UninstallView()
+            case .unusedApps: UnusedAppsView()
             case .updates: UpdatesView()
+            case .duplicates: DuplicatesView()
             case .diskMap: DiskMapView()
+            case .startup: StartupItemsView()
             case .maintenance: MaintenanceView()
             case .status: StatusView()
             case .history: HistoryView()

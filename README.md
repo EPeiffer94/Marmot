@@ -33,7 +33,10 @@ And even then:
 | ✨ | **Cleanup** | Deep-scans caches, logs, browser junk, developer clutter (DerivedData, npm/yarn/pip/cargo…), app caches (Spotify, Slack…), leftovers from deleted apps, old installers, and stale `node_modules` folders |
 | 🗑️ | **Uninstaller** | Removes an app *plus* all its hidden friends — launch agents, preferences, containers, caches, saved state |
 | ⬇️ | **App Updates** | Finds outdated apps via Homebrew, Sparkle feeds, and the App Store. One-click upgrades for Homebrew casks |
+| ⏳ | **Unused Apps** | Flags apps you haven't opened in 3/6/12 months (via Spotlight metadata) with their footprint — one click to the uninstaller |
+| 🪞 | **Duplicate Finder** | Finds files with identical content (hash-verified, not just matching names), you pick which copy to keep |
 | 🗺️ | **Disk Map** | A colorful, clickable treemap of your disk. Zoom into folders, spot the space hogs, find files over 100 MB |
+| ⚡ | **Startup Items** | Shows every login item, launch agent, and daemon in plain English — remove the ones slowing down your boot |
 | 🔧 | **Maintenance** | Flush DNS, rebuild Spotlight, refresh Finder/Dock, clear font caches… each task shows its *exact commands* before running |
 | 📊 | **Live Status** | Real-time CPU (per-core!), GPU, memory, disk I/O, network graphs, battery health, top processes, and an overall health score |
 | 🎛️ | **Menu bar HUD** | Live CPU% in your menu bar — click it for a mini dashboard |

@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import CoreServices
 
 struct InstalledApp: Identifiable, Hashable {
     let id: String          // bundle path
@@ -60,8 +61,7 @@ enum UninstallEngine {
                     ?? (bundle.infoDictionary?["CFBundleName"] as? String)
                     ?? ((path as NSString).lastPathComponent as NSString).deletingPathExtension
                 let version = (bundle.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "—"
-                let lastUsed = (try? URL(fileURLWithPath: path)
-                    .resourceValues(forKeys: [.contentAccessDateKey]))?.contentAccessDate
+                let lastUsed = lastUsedDate(for: path)
                 apps.append(InstalledApp(
                     id: path,
                     name: name,
@@ -75,6 +75,17 @@ enum UninstallEngine {
             }
         }
         return apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// True "last opened" via Spotlight metadata, falling back to the
+    /// filesystem access date (which backup tools often touch).
+    static func lastUsedDate(for path: String) -> Date? {
+        if let item = MDItemCreate(kCFAllocatorDefault, path as CFString),
+           let date = MDItemCopyAttribute(item, kMDItemLastUsedDate) as? Date {
+            return date
+        }
+        return (try? URL(fileURLWithPath: path)
+            .resourceValues(forKeys: [.contentAccessDateKey]))?.contentAccessDate
     }
 
     // MARK: - Remnant discovery
