@@ -53,7 +53,15 @@ make run
 
 That's it! 🎉 `make` builds `Marmot.app` in the project folder — drag it to `/Applications` if you'd like to keep it around.
 
-> 💡 **Tip:** Grant Marmot **Full Disk Access** (System Settings → Privacy & Security) so the scanners can see everything. Without it, some spots are invisible and simply get skipped — nothing breaks.
+### 🔐 Permissions: one grant, big difference
+
+Give Marmot **Full Disk Access**: System Settings → Privacy & Security → Full Disk Access → **+** → add Marmot. This is a one-time thing and it's the single biggest upgrade you can give the app — it lets the scanners *see* protected areas like Mail data, Safari storage, and other apps' containers. Without it nothing breaks; those spots are just invisible and get skipped. 🙈
+
+A few notes on how Marmot handles privileges:
+
+- 🏠 **Most features need no special access at all** — caches, logs, leftovers, Trash, and app uninstalls are all within your own user account
+- 🔑 **A handful of maintenance tasks need admin** (rebuilding Spotlight, purging memory, system launch daemons…) — these are labeled `admin` in the preview and use the standard macOS password dialog, per task, when you apply
+- 🚫 **Marmot never runs as root** — macOS breaks GUI apps launched that way (they lose their permission grants), so like every serious Mac utility, Marmot asks for elevation only at the moment it's needed
 
 ---
 
