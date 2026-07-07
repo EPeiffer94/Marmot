@@ -1,0 +1,11 @@
+# Build output
+.build/
+Marmot.app/
+
+# Xcode
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+
+# macOS
+.DS_Store

@@ -1,0 +1,107 @@
+import Foundation
+
+/// Safety-first boundaries. A path must pass `isSafeToRemove` before the
+/// executor will touch it, no matter what a scanner produced.
+enum SafetyRules {
+
+    static let home = FileManager.default.homeDirectoryForCurrentUser.path
+
+    /// Absolute prefixes that must never be removed or recursed into for deletion.
+    static var protectedPrefixes: [String] {
+        [
+            "/System", "/usr", "/bin", "/sbin", "/etc", "/opt", "/Library/Apple",
+            "/private/var/db", "/Applications/Utilities",
+            home + "/Documents", home + "/Desktop", home + "/Pictures",
+            home + "/Movies", home + "/Music", home + "/Library/Keychains",
+            home + "/Library/Mail", home + "/Library/Messages",
+            home + "/Library/Photos", home + "/Library/Mobile Documents",
+            home + "/Library/Application Support/MobileSync", // device backups
+            home + "/Library/Developer/Xcode/Archives" // signed app archives
+        ]
+    }
+
+    /// Roots we are allowed to delete *inside* (never the root itself).
+    static var allowedRoots: [String] {
+        [
+            home + "/Library/Caches",
+            home + "/Library/Logs",
+            home + "/Library/Application Support",
+            home + "/Library/Containers",
+            home + "/Library/Group Containers",
+            home + "/Library/Preferences",
+            home + "/Library/Saved Application State",
+            home + "/Library/WebKit",
+            home + "/Library/HTTPStorages",
+            home + "/Library/Cookies",
+            home + "/Library/LaunchAgents",
+            home + "/Library/Developer",
+            home + "/Library/pnpm",
+            home + "/.Trash",
+            home + "/.npm",
+            home + "/.yarn",
+            home + "/.cargo",
+            home + "/.gradle",
+            home + "/Downloads",
+            "/Applications",
+            "/Library/LaunchAgents",
+            "/Library/LaunchDaemons",
+            "/Library/Caches",
+            "/private/var/folders",
+            "/Library/Logs"
+        ]
+    }
+
+    /// Extra roots allowed only for the project-artifact purge feature.
+    static var purgeRoots: [String] {
+        let defaults = ["/Projects", "/GitHub", "/dev", "/Code", "/Developer", "/Documents/GitHub", "/repos"]
+            .map { home + $0 }
+        let custom = UserDefaults.standard.stringArray(forKey: "marmot.purgePaths") ?? []
+        return defaults + custom
+    }
+
+    /// User-managed whitelist: paths the user never wants touched.
+    static var whitelist: [String] {
+        get { UserDefaults.standard.stringArray(forKey: "marmot.whitelist") ?? [] }
+        set { UserDefaults.standard.set(newValue, forKey: "marmot.whitelist") }
+    }
+
+    static func isWhitelisted(_ path: String) -> Bool {
+        let p = normalize(path)
+        return whitelist.contains { p == normalize($0) || p.hasPrefix(normalize($0) + "/") }
+    }
+
+    /// The core gate. Conservative: on any doubt, refuse.
+    static func isSafeToRemove(_ path: String, allowPurgeRoots: Bool = false) -> Bool {
+        let p = normalize(path)
+
+        // Basic sanity.
+        guard p.hasPrefix("/"), !p.contains(".."), p.count > 1 else { return false }
+        // Never the home dir, a volume root, or anything shallower than 3 components.
+        let components = p.split(separator: "/")
+        guard components.count >= 3 else { return false }
+        guard p != home else { return false }
+
+        // Never anything under a protected prefix.
+        for prefix in protectedPrefixes {
+            let n = normalize(prefix)
+            if p == n || p.hasPrefix(n + "/") { return false }
+        }
+
+        // Must be strictly inside (not equal to) an allowed root.
+        var roots = allowedRoots
+        if allowPurgeRoots { roots += purgeRoots }
+        let inside = roots.contains { root in
+            let r = normalize(root)
+            return p.hasPrefix(r + "/") && p.count > r.count + 1
+        }
+        guard inside else { return false }
+
+        return true
+    }
+
+    static func normalize(_ path: String) -> String {
+        var p = (path as NSString).expandingTildeInPath
+        while p.count > 1 && p.hasSuffix("/") { p.removeLast() }
+        return p
+    }
+}
