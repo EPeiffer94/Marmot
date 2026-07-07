@@ -38,12 +38,7 @@ struct HistoryView: View {
                         HStack(spacing: 5) {
                             Text(entry.source)
                             if entry.dryRun {
-                                Text("dry run")
-                                    .font(.caption2)
-                                    .padding(.horizontal, 5).padding(.vertical, 1)
-                                    .background(Color.blue.opacity(0.15))
-                                    .foregroundStyle(.blue)
-                                    .clipShape(Capsule())
+                                Badge(text: "dry run", color: .blue)
                             }
                         }
                     }

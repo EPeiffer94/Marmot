@@ -12,11 +12,22 @@ struct CleanupCategory: Identifiable {
 }
 
 /// Scans the well-known junk locations and produces ChangeItems.
-/// Never deletes anything itself.
+/// Never deletes anything itself. Categories declare *what* to look at as
+/// Specs; `buildItems` sizes them in parallel and materializes the results.
 enum CleanupScanner {
 
     static let fm = FileManager.default
     static var home: String { SafetyRules.home }
+
+    /// A removal candidate before sizing.
+    struct Spec {
+        let path: String
+        let group: String
+        var risk: RiskLevel = .low
+        var note: String = ""
+        var action: ChangeAction = .moveToTrash
+        var selected: Bool = true
+    }
 
     static func categories() -> [CleanupCategory] {
         [
@@ -62,48 +73,50 @@ enum CleanupScanner {
         (try? fm.contentsOfDirectory(atPath: dir))?.map { dir + "/" + $0 } ?? []
     }
 
-    static func item(_ path: String,
-                     group: String,
-                     risk: RiskLevel = .low,
-                     note: String = "",
-                     action: ChangeAction = .moveToTrash,
-                     selected: Bool = true,
-                     minSize: Int64 = 1) -> ChangeItem? {
-        guard fm.fileExists(atPath: path) else { return nil }
-        let size = FileSizer.size(of: path)
-        guard size >= minSize else { return nil }
-        return ChangeItem(target: path, action: action, sizeBytes: size,
-                          risk: risk, note: note, group: group, isSelected: selected)
+    /// Sizes specs in parallel; keeps the ones that exist and meet the
+    /// threshold, largest first.
+    static func buildItems(_ specs: [Spec], minSize: Int64) -> [ChangeItem] {
+        guard !specs.isEmpty else { return [] }
+        var results = [ChangeItem?](repeating: nil, count: specs.count)
+        results.withUnsafeMutableBufferPointer { buffer in
+            DispatchQueue.concurrentPerform(iterations: specs.count) { index in
+                let spec = specs[index]
+                guard fm.fileExists(atPath: spec.path) else { return }
+                let size = FileSizer.size(of: spec.path)
+                guard size >= minSize else { return }
+                buffer[index] = ChangeItem(target: spec.path, action: spec.action,
+                                           sizeBytes: size, risk: spec.risk,
+                                           note: spec.note, group: spec.group,
+                                           isSelected: spec.selected)
+            }
+        }
+        return results.compactMap { $0 }.sorted { $0.sizeBytes > $1.sizeBytes }
     }
 
     // MARK: - Categories
 
     static func scanUserCaches() -> [ChangeItem] {
         let skip: Set<String> = ["com.apple.aned", "com.apple.FaceTime", "CloudKit", "FamilyCircle"]
-        return children(of: home + "/Library/Caches").compactMap { path in
+        let specs = children(of: home + "/Library/Caches").compactMap { path -> Spec? in
             let name = (path as NSString).lastPathComponent
             guard !skip.contains(name) else { return nil }
-            let risk: RiskLevel = name.hasPrefix("com.apple.") ? .medium : .low
-            return item(path, group: "User Caches", risk: risk,
-                        note: "Cache for \(name). Rebuilt automatically on next launch.",
-                        minSize: 1024)
+            return Spec(path: path, group: "User Caches",
+                        risk: name.hasPrefix("com.apple.") ? .medium : .low,
+                        note: "Cache for \(name). Rebuilt automatically on next launch.")
         }
+        return buildItems(specs, minSize: 1024)
     }
 
     static func scanLogs() -> [ChangeItem] {
-        var items: [ChangeItem] = []
-        for path in children(of: home + "/Library/Logs") {
-            let name = (path as NSString).lastPathComponent
-            if let i = item(path, group: "User Logs",
-                            note: "Log data for \(name).", minSize: 1024) {
-                items.append(i)
-            }
+        let specs = children(of: home + "/Library/Logs").map { path in
+            Spec(path: path, group: "User Logs",
+                 note: "Log data for \((path as NSString).lastPathComponent).")
         }
-        return items
+        return buildItems(specs, minSize: 1024)
     }
 
     static func scanBrowserCaches() -> [ChangeItem] {
-        let paths: [(String, String)] = [
+        let entries: [(String, String)] = [
             (home + "/Library/Caches/Google/Chrome", "Chrome"),
             (home + "/Library/Caches/com.apple.Safari", "Safari"),
             (home + "/Library/Caches/Firefox", "Firefox"),
@@ -112,11 +125,11 @@ enum CleanupScanner {
             (home + "/Library/Caches/BraveSoftware", "Brave"),
             (home + "/Library/Application Support/Google/Chrome/Default/Service Worker/CacheStorage", "Chrome Service Workers")
         ]
-        return paths.compactMap { path, browser in
-            item(path, group: "Browser Caches",
-                 note: "\(browser) cache. History, bookmarks, cookies, and passwords are not affected.",
-                 minSize: 1024)
+        let specs = entries.map { path, browser in
+            Spec(path: path, group: "Browser Caches",
+                 note: "\(browser) cache. History, bookmarks, cookies, and passwords are not affected.")
         }
+        return buildItems(specs, minSize: 1024)
     }
 
     static func scanDeveloper() -> [ChangeItem] {
@@ -135,10 +148,10 @@ enum CleanupScanner {
             (home + "/Library/Caches/Homebrew", "Homebrew downloads. `brew` re-fetches as needed.", .low, true),
             (home + "/Library/Caches/go-build", "Go build cache.", .low, true)
         ]
-        return entries.compactMap { path, note, risk, selected in
-            item(path, group: "Developer", risk: risk, note: note,
-                 selected: selected, minSize: 1024 * 1024)
+        let specs = entries.map { path, note, risk, selected in
+            Spec(path: path, group: "Developer", risk: risk, note: note, selected: selected)
         }
+        return buildItems(specs, minSize: 1024 * 1024)
     }
 
     static func scanAppCaches() -> [ChangeItem] {
@@ -154,16 +167,14 @@ enum CleanupScanner {
             (home + "/Library/Application Support/zoom.us/AutoUpdater", "Zoom old installers."),
             (home + "/Library/Application Support/Dropbox/Cache", "Dropbox cache.")
         ]
-        return entries.compactMap { path, note in
-            item(path, group: "App Caches", note: note, minSize: 1024 * 1024)
-        }
+        let specs = entries.map { Spec(path: $0.0, group: "App Caches", note: $0.1) }
+        return buildItems(specs, minSize: 1024 * 1024)
     }
 
     /// Conservative orphan detection: reverse-DNS folders/plists whose bundle
     /// ID is not installed and not Apple's.
     static func scanOrphans() -> [ChangeItem] {
         let installed = installedBundleIDs()
-        var items: [ChangeItem] = []
         let bundleIDPattern = try! NSRegularExpression(pattern: "^[A-Za-z0-9-]+\\.[A-Za-z0-9-]+\\.[A-Za-z0-9-.]+$")
 
         func looksLikeBundleID(_ name: String) -> Bool {
@@ -179,8 +190,6 @@ enum CleanupScanner {
             let id = owner(of: name)
             guard looksLikeBundleID(name) else { return false }
             guard !id.hasPrefix("com.apple.") && !id.hasPrefix("group.com.apple.") else { return false }
-            // Match against installed IDs, including prefix matches for helpers
-            // (com.foo.app.helper belongs to com.foo.app).
             return !installed.contains { id == $0 || id.hasPrefix($0 + ".") || $0.hasPrefix(id + ".") }
         }
 
@@ -192,18 +201,17 @@ enum CleanupScanner {
             (home + "/Library/HTTPStorages", "Orphaned HTTP Storage", .low),
             (home + "/Library/WebKit", "Orphaned WebKit Data", .low)
         ]
+        var specs: [Spec] = []
         for (dir, group, risk) in locations {
             for path in children(of: dir) {
                 let name = (path as NSString).lastPathComponent
                 guard isOrphan(name) else { continue }
-                if let i = item(path, group: group, risk: risk,
-                                note: "\(owner(of: name)) does not appear to be installed anymore.",
-                                selected: risk == .low, minSize: 4096) {
-                    items.append(i)
-                }
+                specs.append(Spec(path: path, group: group, risk: risk,
+                                  note: "\(owner(of: name)) does not appear to be installed anymore.",
+                                  selected: risk == .low))
             }
         }
-        return items.sorted { $0.sizeBytes > $1.sizeBytes }
+        return buildItems(specs, minSize: 4096)
     }
 
     static func installedBundleIDs() -> Set<String> {
@@ -235,54 +243,48 @@ enum CleanupScanner {
 
     static func scanInstallers() -> [ChangeItem] {
         let exts: Set<String> = ["dmg", "pkg", "iso", "xip", "mpkg"]
-        var items: [ChangeItem] = []
+        var specs: [Spec] = []
         for dir in [home + "/Downloads", home + "/Library/Caches/Homebrew/downloads"] {
-            for path in children(of: dir) {
-                let ext = (path as NSString).pathExtension.lowercased()
-                guard exts.contains(ext) else { continue }
-                if let i = item(path, group: dir.contains("Homebrew") ? "Homebrew" : "Downloads",
-                                note: "Installer file. Safe to remove after the app is installed.",
-                                minSize: 1024 * 1024) {
-                    items.append(i)
-                }
+            for path in children(of: dir)
+            where exts.contains((path as NSString).pathExtension.lowercased()) {
+                specs.append(Spec(path: path,
+                                  group: dir.contains("Homebrew") ? "Homebrew" : "Downloads",
+                                  note: "Installer file. Safe to remove after the app is installed."))
             }
         }
-        return items.sorted { $0.sizeBytes > $1.sizeBytes }
+        return buildItems(specs, minSize: 1024 * 1024)
     }
 
     static func scanArtifacts() -> [ChangeItem] {
         let artifactNames: Set<String> = ["node_modules", "target", ".build", "dist", "build", "venv", ".venv", "Pods", ".next", ".nuxt"]
-        var items: [ChangeItem] = []
         let cutoff = Date().addingTimeInterval(-7 * 24 * 3600)
+        var specs: [Spec] = []
 
         for root in SafetyRules.purgeRoots where fm.fileExists(atPath: root) {
-            // Projects = direct children of the root.
             for project in children(of: root) {
                 var isDir: ObjCBool = false
                 guard fm.fileExists(atPath: project, isDirectory: &isDir), isDir.boolValue else { continue }
                 let recent = (FileSizer.modificationDate(project) ?? .distantPast) > cutoff
-                for artifact in children(of: project) {
+                let projectName = (project as NSString).lastPathComponent
+                for artifact in children(of: project)
+                where artifactNames.contains((artifact as NSString).lastPathComponent) {
                     let name = (artifact as NSString).lastPathComponent
-                    guard artifactNames.contains(name) else { continue }
-                    let projectName = (project as NSString).lastPathComponent
-                    if let i = item(artifact, group: "Build Artifacts",
-                                    risk: recent ? .medium : .low,
-                                    note: "\(name) in \(projectName)\(recent ? " — project modified within 7 days" : "").",
-                                    selected: !recent,
-                                    minSize: 10 * 1024 * 1024) {
-                        items.append(i)
-                    }
+                    specs.append(Spec(path: artifact, group: "Build Artifacts",
+                                      risk: recent ? .medium : .low,
+                                      note: "\(name) in \(projectName)\(recent ? " — project modified within 7 days" : "").",
+                                      selected: !recent))
                 }
             }
         }
-        return items.sorted { $0.sizeBytes > $1.sizeBytes }
+        return buildItems(specs, minSize: 10 * 1024 * 1024)
     }
 
     static func scanTrash() -> [ChangeItem] {
-        children(of: home + "/.Trash").compactMap {
-            item($0, group: "Trash",
+        let specs = children(of: home + "/.Trash").map {
+            Spec(path: $0, group: "Trash",
                  note: "Already in Trash. Removing is permanent.",
-                 action: .deletePermanently, minSize: 1)
+                 action: .deletePermanently)
         }
+        return buildItems(specs, minSize: 1)
     }
 }

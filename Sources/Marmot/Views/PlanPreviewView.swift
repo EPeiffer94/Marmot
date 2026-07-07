@@ -37,6 +37,17 @@ struct PlanPreviewView: View {
             footer
         }
         .frame(width: 720, height: 560)
+        .confirmationDialog(
+            "Apply \(plan.title)?",
+            isPresented: $confirmApply,
+            titleVisibility: .visible
+        ) {
+            Button("Apply — \(plan.summary)", role: .destructive) { run(dryRun: false) }
+            Button("Run as Dry Run Instead") { run(dryRun: true) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(applyWarning)
+        }
     }
 
     // MARK: Header
@@ -119,14 +130,9 @@ struct PlanPreviewView: View {
                         .font(.callout)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    RiskBadge(risk: item.risk)
+                    Badge(risk: item.risk)
                     if item.action == .runAdminCommand {
-                        Text("admin")
-                            .font(.caption2)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.purple.opacity(0.15))
-                            .foregroundStyle(.purple)
-                            .clipShape(Capsule())
+                        Badge(text: "admin", color: .purple)
                     }
                 }
                 if !item.note.isEmpty {
@@ -203,19 +209,6 @@ struct PlanPreviewView: View {
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(plan.selectedItems.isEmpty)
-                .confirmationDialog(
-                    "Apply \(plan.title)?",
-                    isPresented: $confirmApply,
-                    titleVisibility: .visible
-                ) {
-                    Button("Apply — \(plan.summary)", role: .destructive) {
-                        run(dryRun: false)
-                    }
-                    Button("Run as Dry Run Instead") { run(dryRun: true) }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text(applyWarning)
-                }
                 Button("Cancel") { dismiss(); onDismiss(nil) }
 
             case .running:
@@ -233,18 +226,6 @@ struct PlanPreviewView: View {
                         confirmApply = true
                     } label: {
                         Label("Apply for Real", systemImage: "checkmark.circle.fill")
-                    }
-                    .confirmationDialog(
-                        "Apply \(plan.title)?",
-                        isPresented: $confirmApply,
-                        titleVisibility: .visible
-                    ) {
-                        Button("Apply — \(plan.summary)", role: .destructive) {
-                            run(dryRun: false)
-                        }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text(applyWarning)
                     }
                     Button("Close") { dismiss(); onDismiss(result) }
                 } else {
@@ -320,8 +301,8 @@ struct ResultsView: View {
 
             List(result.results) { r in
                 HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: icon(for: r.outcome))
-                        .foregroundStyle(color(for: r.outcome))
+                    Image(systemName: r.outcome.icon)
+                        .foregroundStyle(r.outcome.color)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(r.item.displayName)
                             .font(.callout)
@@ -358,21 +339,4 @@ struct ResultsView: View {
         }
     }
 
-    private func icon(for outcome: ItemOutcome) -> String {
-        switch outcome {
-        case .done: return "checkmark.circle.fill"
-        case .wouldRemove, .wouldRun: return "eye"
-        case .skippedUnsafe, .skippedWhitelisted: return "shield.fill"
-        case .failed: return "xmark.circle.fill"
-        }
-    }
-
-    private func color(for outcome: ItemOutcome) -> Color {
-        switch outcome {
-        case .done: return .green
-        case .wouldRemove, .wouldRun: return .blue
-        case .skippedUnsafe, .skippedWhitelisted: return .orange
-        case .failed: return .red
-        }
-    }
 }

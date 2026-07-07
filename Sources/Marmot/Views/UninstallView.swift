@@ -5,16 +5,15 @@ import AppKit
 /// preferences, containers, launch agents), dry-run or apply.
 struct UninstallView: View {
 
-    @State private var apps: [InstalledApp] = []
-    @State private var loading = false
+    @ObservedObject private var inventory = AppInventory.shared
     @State private var search = ""
     @State private var selectedApp: InstalledApp?
     @State private var buildingPlan = false
     @State private var activePlan: ChangePlan?
 
     var filtered: [InstalledApp] {
-        guard !search.isEmpty else { return apps }
-        return apps.filter {
+        guard !search.isEmpty else { return inventory.apps }
+        return inventory.apps.filter {
             $0.name.localizedCaseInsensitiveContains(search) ||
             $0.bundleID.localizedCaseInsensitiveContains(search)
         }
@@ -22,7 +21,7 @@ struct UninstallView: View {
 
     var body: some View {
         Group {
-            if loading && apps.isEmpty {
+            if inventory.loading && inventory.apps.isEmpty {
                 ProgressView("Finding installed apps…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -34,7 +33,7 @@ struct UninstallView: View {
             ToolbarItemGroup {
                 if buildingPlan { ProgressView().controlSize(.small) }
                 Button {
-                    load()
+                    inventory.refresh()
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
@@ -50,11 +49,11 @@ struct UninstallView: View {
         .sheet(item: $activePlan) { plan in
             PlanPreviewView(plan: plan) { result in
                 activePlan = nil
-                if let r = result, !r.dryRun { load() }
+                if let r = result, !r.dryRun { inventory.refresh() }
             }
         }
-        .onAppear { if apps.isEmpty { load() } }
-        .navigationSubtitle("\(apps.count) apps installed")
+        .onAppear { inventory.loadIfNeeded() }
+        .navigationSubtitle("\(inventory.apps.count) apps installed")
     }
 
     private var appTable: some View {
@@ -71,12 +70,7 @@ struct UninstallView: View {
                     }
                     Text(app.name)
                     if app.isRunning {
-                        Text("running")
-                            .font(.caption2)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.green.opacity(0.15))
-                            .foregroundStyle(.green)
-                            .clipShape(Capsule())
+                        Badge(text: "running", color: .green)
                     }
                 }
             }
@@ -104,37 +98,12 @@ struct UninstallView: View {
         }
         .contextMenu(forSelectionType: String.self) { ids in
             Button("Uninstall…") {
-                selectedApp = apps.first { ids.contains($0.id) }
+                selectedApp = inventory.apps.first { ids.contains($0.id) }
                 buildPlan()
             }
             Button("Show in Finder") {
-                if let app = apps.first(where: { ids.contains($0.id) }) {
+                if let app = inventory.apps.first(where: { ids.contains($0.id) }) {
                     NSWorkspace.shared.selectFile(app.path, inFileViewerRootedAtPath: "")
-                }
-            }
-        }
-    }
-
-    private func load() {
-        loading = true
-        Task.detached(priority: .userInitiated) {
-            // Phase 1: fast listing — show apps immediately, sizes still unknown.
-            let found = UninstallEngine.installedApps(computeSizes: false)
-            await MainActor.run {
-                apps = found
-                loading = false
-            }
-            // Phase 2: fill in sizes in parallel, updating rows as they land.
-            await withTaskGroup(of: (String, Int64).self) { group in
-                for app in found {
-                    group.addTask { (app.id, FileSizer.size(of: app.path)) }
-                }
-                for await (id, size) in group {
-                    await MainActor.run {
-                        if let index = apps.firstIndex(where: { $0.id == id }) {
-                            apps[index] = apps[index].withSize(size)
-                        }
-                    }
                 }
             }
         }
@@ -143,23 +112,20 @@ struct UninstallView: View {
     private func buildPlan() {
         guard let app = selectedApp else { return }
         buildingPlan = true
-        Task.detached(priority: .userInitiated) {
-            let plan = UninstallEngine.uninstallPlan(for: app)
-            await MainActor.run {
-                buildingPlan = false
-                if app.isRunning {
-                    // Prepend a quit step so files aren't in use.
-                    var items = plan.items
-                    items.insert(ChangeItem(
-                        target: "osascript -e 'tell application \"\(app.name)\" to quit'",
-                        action: .runCommand, sizeBytes: 0, risk: .low,
-                        note: "Quits \(app.name) before removal.",
-                        group: "Before removal"), at: 0)
-                    activePlan = ChangePlan(title: plan.title, source: plan.source, items: items)
-                } else {
-                    activePlan = plan
-                }
+        Task { @MainActor in
+            var plan = await Task.detached(priority: .userInitiated) {
+                UninstallEngine.uninstallPlan(for: app)
+            }.value
+            if app.isRunning {
+                let quit = ChangeItem(
+                    target: "osascript -e 'tell application \"\(app.name)\" to quit'",
+                    action: .runCommand,
+                    note: "Quits \(app.name) before removal.",
+                    group: "Before removal")
+                plan = ChangePlan(title: plan.title, source: plan.source, items: [quit] + plan.items)
             }
+            buildingPlan = false
+            activePlan = plan
         }
     }
 }

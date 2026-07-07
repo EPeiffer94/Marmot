@@ -15,7 +15,7 @@ struct MenuBarHUD: View {
                     .font(.headline)
                 Spacer()
                 HStack(spacing: 5) {
-                    Circle().fill(healthColor).frame(width: 8, height: 8)
+                    Circle().fill(snap.healthColor).frame(width: 8, height: 8)
                     Text("Health \(snap.healthScore)")
                         .font(.caption.weight(.semibold))
                 }
@@ -28,10 +28,10 @@ struct MenuBarHUD: View {
             row("internaldrive", "Disk", "\(ByteFormat.string(snap.disk.freeBytes)) free", snap.disk.usedPercent, .orange)
 
             HStack(spacing: 10) {
-                Label(speed(snap.network.downPerSec), systemImage: "arrow.down")
+                Label(ByteFormat.rate(snap.network.downPerSec), systemImage: "arrow.down")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
-                Label(speed(snap.network.upPerSec), systemImage: "arrow.up")
+                Label(ByteFormat.rate(snap.network.upPerSec), systemImage: "arrow.up")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -93,13 +93,4 @@ struct MenuBarHUD: View {
         }
     }
 
-    private var healthColor: Color {
-        if snap.healthScore >= 80 { return .green }
-        if snap.healthScore >= 50 { return .orange }
-        return .red
-    }
-
-    private func speed(_ bytesPerSec: Double) -> String {
-        ByteFormat.string(Int64(max(bytesPerSec, 0))) + "/s"
-    }
 }

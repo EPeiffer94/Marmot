@@ -66,7 +66,7 @@ struct MainWindow: View {
             Divider()
             HStack(spacing: 6) {
                 Circle()
-                    .fill(healthColor)
+                    .fill(stats.snapshot.healthColor)
                     .frame(width: 8, height: 8)
                 Text("Health \(stats.snapshot.healthScore)")
                     .font(.caption.weight(.medium))
@@ -78,12 +78,5 @@ struct MainWindow: View {
             .padding(.horizontal, 10)
             .padding(.bottom, 8)
         }
-    }
-
-    private var healthColor: Color {
-        let score = stats.snapshot.healthScore
-        if score >= 80 { return .green }
-        if score >= 50 { return .orange }
-        return .red
     }
 }

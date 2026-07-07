@@ -46,29 +46,18 @@ struct DiskMapView: View {
     // MARK: States
 
     private var startState: some View {
-        VStack(spacing: 16) {
-            EmptyState(icon: "square.grid.3x3.topleft.filled",
-                       title: "Disk Map",
-                       message: "Visualizes where your disk space goes as an interactive treemap. Click a block to zoom in, right-click to reveal or remove. Removal always goes through the change preview.")
-            HStack {
-                Button {
-                    scanTarget = NSHomeDirectory()
-                    startScan()
-                } label: {
-                    Label("Scan Home Folder", systemImage: "house")
-                }
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
-                Button {
-                    pickFolder()
-                } label: {
-                    Label("Choose Folder…", systemImage: "folder")
-                }
-                .controlSize(.large)
+        StartScreen(icon: "square.grid.3x3.topleft.filled",
+                    title: "Disk Map",
+                    message: "Visualizes where your disk space goes as an interactive treemap. Click a block to zoom in, right-click to reveal or remove. Removal always goes through the change preview.",
+                    buttonLabel: "Scan Home Folder",
+                    action: { scanTarget = NSHomeDirectory(); startScan() }) {
+            Button {
+                pickFolder()
+            } label: {
+                Label("Choose Folder…", systemImage: "folder")
             }
-            Spacer().frame(height: 60)
+            .controlSize(.large)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var scanningState: some View {
@@ -202,15 +191,12 @@ struct DiskMapView: View {
         s.onProgress = { path in
             DispatchQueue.main.async { progressPath = path }
         }
-        Task.detached(priority: .userInitiated) {
-            let tree = s.scan(root: target)
-            let files = s.largeFiles
-            await MainActor.run {
-                rootNode = tree
-                currentNode = tree
-                largeFiles = files
-                scanning = false
-            }
+        Task { @MainActor in
+            let tree = await Task.detached(priority: .userInitiated) { s.scan(root: target) }.value
+            rootNode = tree
+            currentNode = tree
+            largeFiles = s.largeFiles
+            scanning = false
         }
     }
 

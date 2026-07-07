@@ -5,9 +5,7 @@ import AppKit
 /// one click to the full uninstall plan.
 struct UnusedAppsView: View {
 
-    @State private var apps: [InstalledApp] = []
-    @State private var loading = false
-    @State private var loadedOnce = false
+    @ObservedObject private var inventory = AppInventory.shared
     @State private var months = 6
     @State private var activePlan: ChangePlan?
     @State private var buildingPlan = false
@@ -17,7 +15,7 @@ struct UnusedAppsView: View {
     }
 
     private var unused: [InstalledApp] {
-        apps.filter { app in
+        inventory.apps.filter { app in
             guard app.bundleID.lowercased() != "dev.marmot.app" else { return false }
             guard let used = app.lastUsed else { return true }
             return used < cutoff
@@ -29,10 +27,10 @@ struct UnusedAppsView: View {
 
     var body: some View {
         Group {
-            if loading && apps.isEmpty {
+            if inventory.loading && inventory.apps.isEmpty {
                 ProgressView("Checking when each app was last opened…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if loadedOnce && unused.isEmpty {
+            } else if unused.isEmpty {
                 EmptyState(icon: "hourglass",
                            title: "No unused apps",
                            message: "Everything installed has been opened within the last \(months) months. 👏")
@@ -50,23 +48,20 @@ struct UnusedAppsView: View {
                 }
                 .pickerStyle(.segmented)
                 Button {
-                    load()
+                    inventory.refresh()
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
-                .disabled(loading)
             }
         }
         .sheet(item: $activePlan) { plan in
             PlanPreviewView(plan: plan) { result in
                 activePlan = nil
-                if let r = result, !r.dryRun { load() }
+                if let r = result, !r.dryRun { inventory.refresh() }
             }
         }
-        .onAppear { if !loadedOnce { load() } }
-        .navigationSubtitle(loadedOnce
-            ? "\(unused.count) apps unused for \(months)+ months — \(ByteFormat.string(totalSize))"
-            : "")
+        .onAppear { inventory.loadIfNeeded() }
+        .navigationSubtitle("\(unused.count) apps unused for \(months)+ months — \(ByteFormat.string(totalSize))")
     }
 
     private var appList: some View {
@@ -106,38 +101,14 @@ struct UnusedAppsView: View {
         .listStyle(.inset(alternatesRowBackgrounds: true))
     }
 
-    private func load() {
-        loading = true
-        loadedOnce = true
-        Task.detached(priority: .userInitiated) {
-            let found = UninstallEngine.installedApps(computeSizes: false)
-            await MainActor.run {
-                apps = found
-                loading = false
-            }
-            await withTaskGroup(of: (String, Int64).self) { group in
-                for app in found {
-                    group.addTask { (app.id, FileSizer.size(of: app.path)) }
-                }
-                for await (id, size) in group {
-                    await MainActor.run {
-                        if let index = apps.firstIndex(where: { $0.id == id }) {
-                            apps[index] = apps[index].withSize(size)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private func buildPlan(for app: InstalledApp) {
         buildingPlan = true
-        Task.detached(priority: .userInitiated) {
-            let plan = UninstallEngine.uninstallPlan(for: app)
-            await MainActor.run {
-                buildingPlan = false
-                activePlan = plan
-            }
+        Task { @MainActor in
+            let plan = await Task.detached(priority: .userInitiated) {
+                UninstallEngine.uninstallPlan(for: app)
+            }.value
+            buildingPlan = false
+            activePlan = plan
         }
     }
 }

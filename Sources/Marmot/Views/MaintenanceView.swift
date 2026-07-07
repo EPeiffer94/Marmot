@@ -20,14 +20,9 @@ struct MaintenanceView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 8) {
                         Text(task.name).font(.headline)
-                        RiskBadge(risk: task.risk)
-                        if task.commands.contains(where: { $0.1 }) {
-                            Text("admin")
-                                .font(.caption2)
-                                .padding(.horizontal, 5).padding(.vertical, 1)
-                                .background(Color.purple.opacity(0.15))
-                                .foregroundStyle(.purple)
-                                .clipShape(Capsule())
+                        Badge(risk: task.risk)
+                        if task.needsAdmin {
+                            Badge(text: "admin", color: .purple)
                         }
                     }
                     Text(task.explanation)
