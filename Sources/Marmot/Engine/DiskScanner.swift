@@ -1,0 +1,109 @@
+import Foundation
+
+/// A node in the disk-usage tree used by the treemap.
+final class FileNode: Identifiable {
+    let id = UUID()
+    let name: String
+    let path: String
+    let isDirectory: Bool
+    var sizeBytes: Int64
+    var children: [FileNode]
+    weak var parent: FileNode?
+
+    init(name: String, path: String, isDirectory: Bool,
+         sizeBytes: Int64 = 0, children: [FileNode] = []) {
+        self.name = name
+        self.path = path
+        self.isDirectory = isDirectory
+        self.sizeBytes = sizeBytes
+        self.children = children
+    }
+}
+
+struct LargeFile: Identifiable {
+    let id = UUID()
+    let path: String
+    let sizeBytes: Int64
+    var name: String { (path as NSString).lastPathComponent }
+}
+
+/// Builds a size tree for the treemap and collects the largest files.
+final class DiskScanner {
+
+    static let maxDepth = 6
+    static let maxChildrenPerDir = 60
+    static let largeFileThreshold: Int64 = 100 * 1024 * 1024
+
+    private(set) var largeFiles: [LargeFile] = []
+    var isCancelled = false
+    var onProgress: ((String) -> Void)?
+
+    func scan(root: String) -> FileNode {
+        largeFiles = []
+        let node = scanNode(path: root, depth: 0)
+        largeFiles.sort { $0.sizeBytes > $1.sizeBytes }
+        if largeFiles.count > 100 { largeFiles = Array(largeFiles.prefix(100)) }
+        return node
+    }
+
+    private func scanNode(path: String, depth: Int) -> FileNode {
+        let name = (path as NSString).lastPathComponent
+        let url = URL(fileURLWithPath: path)
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+
+        if !isDir.boolValue {
+            let size = FileSizer.fileSize(url)
+            if size >= Self.largeFileThreshold {
+                largeFiles.append(LargeFile(path: path, sizeBytes: size))
+            }
+            return FileNode(name: name, path: path, isDirectory: false, sizeBytes: size)
+        }
+
+        if depth % 2 == 0 { onProgress?(path) }
+        if isCancelled {
+            return FileNode(name: name, path: path, isDirectory: true, sizeBytes: 0)
+        }
+
+        // Past maxDepth just sum sizes without keeping structure.
+        if depth >= Self.maxDepth {
+            let size = FileSizer.size(of: path)
+            return FileNode(name: name, path: path, isDirectory: true, sizeBytes: size)
+        }
+
+        let childPaths = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
+        var children: [FileNode] = []
+        var total: Int64 = 0
+        for childName in childPaths {
+            if isCancelled { break }
+            // Skip firmlinked/system mounts that inflate results.
+            if depth == 0 && (childName == "Volumes" || childName == "System") && path == "/" { continue }
+            let childPath = path == "/" ? "/" + childName : path + "/" + childName
+            // Don't cross device boundaries or follow symlinks.
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: childPath),
+               (attrs[.type] as? FileAttributeType) == .typeSymbolicLink { continue }
+            let child = scanNode(path: childPath, depth: depth + 1)
+            child.parent = nil
+            total += child.sizeBytes
+            children.append(child)
+        }
+
+        children.sort { $0.sizeBytes > $1.sizeBytes }
+        // Collapse the long tail into an "other" node to bound memory.
+        if children.count > Self.maxChildrenPerDir {
+            let kept = Array(children.prefix(Self.maxChildrenPerDir))
+            let restSize = children.dropFirst(Self.maxChildrenPerDir).reduce(Int64(0)) { $0 + $1.sizeBytes }
+            var merged = kept
+            if restSize > 0 {
+                merged.append(FileNode(name: "(\(children.count - kept.count) smaller items)",
+                                       path: path, isDirectory: true, sizeBytes: restSize))
+            }
+            children = merged
+        }
+
+        let node = FileNode(name: name.isEmpty ? path : name, path: path,
+                            isDirectory: true, sizeBytes: total, children: children)
+        children.forEach { $0.parent = node }
+        return node
+    }
+}
