@@ -9,6 +9,7 @@ final class PlanExecutor {
     static func execute(_ plan: ChangePlan,
                         dryRun: Bool,
                         allowPurgeRoots: Bool = false,
+                        allowUserFiles: Bool = false,
                         progress: ((Double, String) -> Void)? = nil) async -> ExecutionResult {
         let items = plan.selectedItems
         var results: [ItemResult] = []
@@ -16,7 +17,9 @@ final class PlanExecutor {
 
         for (index, item) in items.enumerated() {
             progress?(Double(index) / Double(max(items.count, 1)), item.displayName)
-            let result = await executeItem(item, dryRun: dryRun, allowPurgeRoots: allowPurgeRoots)
+            let result = await executeItem(item, dryRun: dryRun,
+                                           allowPurgeRoots: allowPurgeRoots,
+                                           allowUserFiles: allowUserFiles)
             results.append(result)
         }
         progress?(1.0, "Finished")
@@ -28,10 +31,13 @@ final class PlanExecutor {
 
     private static func executeItem(_ item: ChangeItem,
                                     dryRun: Bool,
-                                    allowPurgeRoots: Bool) async -> ItemResult {
+                                    allowPurgeRoots: Bool,
+                                    allowUserFiles: Bool) async -> ItemResult {
         switch item.action {
         case .moveToTrash, .deletePermanently:
-            return removeFile(item, dryRun: dryRun, allowPurgeRoots: allowPurgeRoots)
+            return removeFile(item, dryRun: dryRun,
+                              allowPurgeRoots: allowPurgeRoots,
+                              allowUserFiles: allowUserFiles)
         case .runCommand, .runAdminCommand:
             return runCommand(item, dryRun: dryRun)
         }
@@ -39,13 +45,15 @@ final class PlanExecutor {
 
     private static func removeFile(_ item: ChangeItem,
                                    dryRun: Bool,
-                                   allowPurgeRoots: Bool) -> ItemResult {
+                                   allowPurgeRoots: Bool,
+                                   allowUserFiles: Bool) -> ItemResult {
         let path = item.target
 
         if SafetyRules.isWhitelisted(path) {
             return ItemResult(item: item, outcome: .skippedWhitelisted)
         }
-        guard SafetyRules.isSafeToRemove(path, allowPurgeRoots: allowPurgeRoots) else {
+        guard SafetyRules.isSafeToRemove(path, allowPurgeRoots: allowPurgeRoots,
+                                         allowUserFiles: allowUserFiles) else {
             return ItemResult(item: item, outcome: .skippedUnsafe,
                               detail: "Path failed safety validation and was not touched.")
         }

@@ -6,19 +6,37 @@ enum SafetyRules {
 
     static let home = FileManager.default.homeDirectoryForCurrentUser.path
 
-    /// Absolute prefixes that must never be removed or recursed into for deletion.
-    static var protectedPrefixes: [String] {
+    /// Absolute prefixes that must never be removed, under any circumstances.
+    static var systemProtectedPrefixes: [String] {
         [
             "/System", "/usr", "/bin", "/sbin", "/etc", "/opt", "/Library/Apple",
             "/private/var/db", "/Applications/Utilities",
-            home + "/Documents", home + "/Desktop", home + "/Pictures",
-            home + "/Movies", home + "/Music", home + "/Library/Keychains",
+            home + "/Library/Keychains",
             home + "/Library/Mail", home + "/Library/Messages",
             home + "/Library/Photos", home + "/Library/Mobile Documents",
             home + "/Library/Application Support/MobileSync", // device backups
             home + "/Library/Developer/Xcode/Archives" // signed app archives
         ]
     }
+
+    /// User-content areas protected by default. Only the Duplicates module
+    /// may remove explicitly chosen files here (allowUserFiles), and even
+    /// then only via trash-first actions.
+    static var userDataPrefixes: [String] {
+        [
+            home + "/Documents", home + "/Desktop", home + "/Pictures",
+            home + "/Movies", home + "/Music"
+        ]
+    }
+
+    static var protectedPrefixes: [String] { systemProtectedPrefixes + userDataPrefixes }
+
+    /// Media library packages must never be reached into, even in
+    /// allowUserFiles mode — removing internals corrupts the library.
+    static let libraryPackageMarkers = [
+        ".photoslibrary", ".musiclibrary", ".aplibrary", ".tvlibrary",
+        ".imovielibrary", ".fcpbundle", ".migratedphotolibrary"
+    ]
 
     /// Roots we are allowed to delete *inside* (never the root itself).
     static var allowedRoots: [String] {
@@ -71,7 +89,11 @@ enum SafetyRules {
     }
 
     /// The core gate. Conservative: on any doubt, refuse.
-    static func isSafeToRemove(_ path: String, allowPurgeRoots: Bool = false) -> Bool {
+    /// `allowUserFiles` is used only by the Duplicates module, where the user
+    /// hand-picks individual files inside their own content folders.
+    static func isSafeToRemove(_ path: String,
+                               allowPurgeRoots: Bool = false,
+                               allowUserFiles: Bool = false) -> Bool {
         let p = normalize(path)
 
         // Basic sanity.
@@ -81,15 +103,27 @@ enum SafetyRules {
         guard components.count >= 3 else { return false }
         guard p != home else { return false }
 
-        // Never anything under a protected prefix.
-        for prefix in protectedPrefixes {
+        // Never inside a media library package.
+        let lower = p.lowercased()
+        if libraryPackageMarkers.contains(where: { lower.contains($0) }) { return false }
+
+        // Never anything under an always-protected prefix.
+        for prefix in systemProtectedPrefixes {
             let n = normalize(prefix)
             if p == n || p.hasPrefix(n + "/") { return false }
+        }
+        // User-content areas are protected unless explicitly unlocked.
+        if !allowUserFiles {
+            for prefix in userDataPrefixes {
+                let n = normalize(prefix)
+                if p == n || p.hasPrefix(n + "/") { return false }
+            }
         }
 
         // Must be strictly inside (not equal to) an allowed root.
         var roots = allowedRoots
         if allowPurgeRoots { roots += purgeRoots }
+        if allowUserFiles { roots += userDataPrefixes }
         let inside = roots.contains { root in
             let r = normalize(root)
             return p.hasPrefix(r + "/") && p.count > r.count + 1
