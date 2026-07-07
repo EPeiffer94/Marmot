@@ -1,9 +1,11 @@
 APP_NAME = Marmot
+VERSION = 1.0.0
 BUILD_DIR = .build/release
 BUNDLE = $(APP_NAME).app
 CONTENTS = $(BUNDLE)/Contents
+RELEASE_ZIP = $(APP_NAME)-$(VERSION).zip
 
-.PHONY: all build bundle run clean
+.PHONY: all build bundle run release clean
 
 all: bundle
 
@@ -21,6 +23,13 @@ bundle: build
 
 run: bundle
 	open $(BUNDLE)
+
+# Distributable zip for GitHub Releases. ditto preserves the code signature
+# and resource forks (plain zip can corrupt .app bundles).
+release: bundle
+	rm -f $(RELEASE_ZIP)
+	ditto -c -k --keepParent $(BUNDLE) $(RELEASE_ZIP)
+	@echo "Created $(RELEASE_ZIP) — attach it to a GitHub Release."
 
 clean:
 	rm -rf .build $(BUNDLE)
