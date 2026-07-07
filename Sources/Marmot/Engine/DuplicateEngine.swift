@@ -64,24 +64,39 @@ final class DuplicateEngine {
             }
         }
 
-        var groups: [DuplicateGroup] = []
-        for (size, paths) in bySize where paths.count > 1 {
-            if isCancelled { return [] }
-            var byHash: [String: [DuplicateFile]] = [:]
-            for path in paths {
-                onProgress?(path)
-                guard let key = Self.contentKey(path: path, size: size) else { continue }
-                let modified = FileSizer.modificationDate(path) ?? .distantPast
-                byHash[key, default: []].append(
-                    DuplicateFile(path: path, sizeBytes: size, modified: modified))
-            }
-            for (_, files) in byHash where files.count > 1 {
-                groups.append(DuplicateGroup(
-                    sizeBytes: size,
-                    files: files.sorted { $0.modified > $1.modified }))
+        // Hash all same-size candidates in parallel — this is the slow part.
+        let candidates: [(size: Int64, path: String)] = bySize
+            .filter { $0.value.count > 1 }
+            .flatMap { size, paths in paths.map { (size, $0) } }
+        guard !candidates.isEmpty else { return [] }
+
+        var keyed = [(key: String, file: DuplicateFile)?](repeating: nil, count: candidates.count)
+        keyed.withUnsafeMutableBufferPointer { buffer in
+            DispatchQueue.concurrentPerform(iterations: candidates.count) { index in
+                if isCancelled { return }
+                let candidate = candidates[index]
+                onProgress?(candidate.path)
+                guard let hash = Self.contentKey(path: candidate.path, size: candidate.size) else { return }
+                buffer[index] = (
+                    key: "\(candidate.size):\(hash)",
+                    file: DuplicateFile(path: candidate.path,
+                                        sizeBytes: candidate.size,
+                                        modified: FileSizer.modificationDate(candidate.path) ?? .distantPast))
             }
         }
-        return groups.sorted { $0.wastedBytes > $1.wastedBytes }
+        if isCancelled { return [] }
+
+        var byKey: [String: [DuplicateFile]] = [:]
+        for entry in keyed {
+            if let entry { byKey[entry.key, default: []].append(entry.file) }
+        }
+        return byKey.values
+            .filter { $0.count > 1 }
+            .map { files in
+                DuplicateGroup(sizeBytes: files[0].sizeBytes,
+                               files: files.sorted { $0.modified > $1.modified })
+            }
+            .sorted { $0.wastedBytes > $1.wastedBytes }
     }
 
     /// SHA-256 over the file content. Files ≤ 4 MB are hashed in full;

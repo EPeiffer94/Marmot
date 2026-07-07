@@ -1,26 +1,119 @@
 import SwiftUI
 
-// MARK: - Risk badge
+// MARK: - Badge (capsule tag used everywhere)
 
-struct RiskBadge: View {
-    let risk: RiskLevel
+struct Badge: View {
+    let text: String
+    var color: Color = .secondary
 
+    init(text: String, color: Color = .secondary) {
+        self.text = text
+        self.color = color
+    }
+
+    init(risk: RiskLevel) {
+        self.init(text: risk.label, color: risk.color)
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1.5)
+            .background(color.opacity(0.15))
+            .foregroundStyle(color)
+            .clipShape(Capsule())
+    }
+}
+
+// MARK: - Shared color/format extensions
+
+extension RiskLevel {
     var color: Color {
-        switch risk {
+        switch self {
         case .low: return .green
         case .medium: return .orange
         case .high: return .red
         }
     }
+}
+
+extension SystemSnapshot {
+    var healthColor: Color {
+        if healthScore >= 80 { return .green }
+        if healthScore >= 50 { return .orange }
+        return .red
+    }
+}
+
+extension ByteFormat {
+    static func rate(_ bytesPerSec: Double) -> String {
+        string(Int64(max(bytesPerSec, 0))) + "/s"
+    }
+}
+
+extension ItemOutcome {
+    var icon: String {
+        switch self {
+        case .done: return "checkmark.circle.fill"
+        case .wouldRemove, .wouldRun: return "eye"
+        case .skippedUnsafe, .skippedWhitelisted: return "shield.fill"
+        case .failed: return "xmark.circle.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .done: return .green
+        case .wouldRemove, .wouldRun: return .blue
+        case .skippedUnsafe, .skippedWhitelisted: return .orange
+        case .failed: return .red
+        }
+    }
+}
+
+// MARK: - Start screen (shared scan-module opener)
+
+struct StartScreen<Extra: View>: View {
+    let icon: String
+    let title: String
+    let message: String
+    let buttonLabel: String
+    let action: () -> Void
+    let extra: Extra
+
+    init(icon: String, title: String, message: String, buttonLabel: String,
+         action: @escaping () -> Void,
+         @ViewBuilder extra: () -> Extra) {
+        self.icon = icon
+        self.title = title
+        self.message = message
+        self.buttonLabel = buttonLabel
+        self.action = action
+        self.extra = extra()
+    }
 
     var body: some View {
-        Text(risk.label)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.15))
-            .foregroundStyle(color)
-            .clipShape(Capsule())
+        VStack(spacing: 16) {
+            EmptyState(icon: icon, title: title, message: message)
+            extra
+            Button(action: action) {
+                Label(buttonLabel, systemImage: "magnifyingglass")
+                    .frame(width: 200)
+            }
+            .controlSize(.large)
+            .buttonStyle(.borderedProminent)
+            Spacer().frame(height: 60)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+extension StartScreen where Extra == EmptyView {
+    init(icon: String, title: String, message: String, buttonLabel: String,
+         action: @escaping () -> Void) {
+        self.init(icon: icon, title: title, message: message,
+                  buttonLabel: buttonLabel, action: action) { EmptyView() }
     }
 }
 

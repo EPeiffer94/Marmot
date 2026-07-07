@@ -74,9 +74,13 @@ final class StatsSampler: ObservableObject {
     @Published var snapshot = SystemSnapshot()
 
     private var timer: Timer?
+    /// All mutable sampling state is confined to this serial queue.
+    private let sampleQueue = DispatchQueue(label: "marmot.stats", qos: .utility)
     private var previousCPUTicks: [[UInt32]] = []
     private var previousNet: (down: UInt64, up: UInt64, at: Date)?
     private var previousDiskIO: (read: UInt64, write: UInt64, at: Date)?
+    private var previousProcTimes: [pid_t: UInt64] = [:]
+    private var previousProcSample = Date()
     private let historyLength = 40
 
     func start() {
@@ -94,7 +98,7 @@ final class StatsSampler: ObservableObject {
     }
 
     private func sample() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
+        sampleQueue.async { [weak self] in
             guard let self else { return }
             var snap = SystemSnapshot()
             snap.cpu = self.sampleCPU()
@@ -103,7 +107,7 @@ final class StatsSampler: ObservableObject {
             snap.network = self.sampleNetwork(previousHistory: self.snapshot.network)
             snap.battery = Self.sampleBattery()
             snap.gpuUsage = Self.sampleGPU()
-            snap.topProcesses = Self.sampleProcesses()
+            snap.topProcesses = self.sampleProcesses()
             snap.uptime = Self.uptimeString()
             snap.healthScore = Self.healthScore(snap)
             DispatchQueue.main.async {
@@ -319,18 +323,39 @@ final class StatsSampler: ObservableObject {
         return nil
     }
 
-    // MARK: Processes
+    // MARK: Processes (libproc — no process spawning)
 
-    static func sampleProcesses() -> [ProcessStat] {
-        let out = Shell.run("/bin/ps", ["-Aceo", "pid,pcpu,comm", "-r"], timeout: 5)
-        guard out.succeeded else { return [] }
-        return out.stdout.split(separator: "\n").dropFirst().prefix(6).compactMap { line in
-            let parts = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
-            guard parts.count == 3,
-                  let pid = Int(parts[0]),
-                  let cpu = Double(parts[1]) else { return nil }
-            return ProcessStat(id: pid, name: String(parts[2]), cpuPercent: cpu)
+    private func sampleProcesses() -> [ProcessStat] {
+        let now = Date()
+        let wall = now.timeIntervalSince(previousProcSample)
+        previousProcSample = now
+
+        var pidCount = proc_listallpids(nil, 0)
+        guard pidCount > 0 else { return [] }
+        var pids = [pid_t](repeating: 0, count: Int(pidCount) + 32)
+        pidCount = proc_listallpids(&pids, Int32(pids.count * MemoryLayout<pid_t>.stride))
+        guard pidCount > 0 else { return [] }
+
+        var current: [pid_t: UInt64] = [:]
+        var stats: [ProcessStat] = []
+        for pid in pids.prefix(Int(pidCount)) where pid > 0 {
+            var info = proc_taskinfo()
+            let size = Int32(MemoryLayout<proc_taskinfo>.stride)
+            guard proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, size) == size else { continue }
+            let total = info.pti_total_user &+ info.pti_total_system
+            current[pid] = total
+            guard wall > 0, let previous = previousProcTimes[pid], total >= previous else { continue }
+            let percent = Double(total - previous) / 1_000_000_000.0 / wall * 100.0
+            guard percent >= 0.1 else { continue }
+            var nameBuffer = [CChar](repeating: 0, count: 256)
+            proc_name(pid, &nameBuffer, UInt32(nameBuffer.count))
+            let name = String(cString: nameBuffer)
+            stats.append(ProcessStat(id: Int(pid),
+                                     name: name.isEmpty ? "pid \(pid)" : name,
+                                     cpuPercent: percent))
         }
+        previousProcTimes = current
+        return Array(stats.sorted { $0.cpuPercent > $1.cpuPercent }.prefix(6))
     }
 
     // MARK: Misc

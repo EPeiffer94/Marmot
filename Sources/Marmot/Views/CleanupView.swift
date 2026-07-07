@@ -37,21 +37,12 @@ struct CleanupView: View {
     // MARK: Start state
 
     private var startState: some View {
-        VStack(spacing: 16) {
-            EmptyState(icon: "sparkles",
-                       title: "Deep Cleanup",
-                       message: "Scans caches, logs, browser data, developer junk, orphaned app data, installers, build artifacts, and Trash. Nothing is removed without your review — every change is shown first, and you can dry-run it.")
-            Button {
-                Task { await rescan() }
-            } label: {
-                Label("Scan My Mac", systemImage: "magnifyingglass")
-                    .frame(width: 180)
-            }
-            .controlSize(.large)
-            .buttonStyle(.borderedProminent)
-            Spacer().frame(height: 60)
+        StartScreen(icon: "sparkles",
+                    title: "Deep Cleanup",
+                    message: "Scans caches, logs, browser data, developer junk, orphaned app data, installers, build artifacts, and Trash. Nothing is removed without your review — every change is shown first, and you can dry-run it.",
+                    buttonLabel: "Scan My Mac") {
+            Task { await rescan() }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: Category list

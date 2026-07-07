@@ -73,12 +73,12 @@ struct StartupItemsView: View {
                 HStack(spacing: 6) {
                     Text(item.name).font(.headline)
                     if item.keepAlive {
-                        badge("always running", .orange)
+                        Badge(text: "always running", color: .orange)
                     } else if item.runAtLoad {
-                        badge("runs at login", .blue)
+                        Badge(text: "runs at login", color: .blue)
                     }
                     if item.kind == .systemAgent || item.kind == .systemDaemon {
-                        badge("admin to remove", .purple)
+                        Badge(text: "admin to remove", color: .purple)
                     }
                 }
                 Text(item.detail)
@@ -94,15 +94,6 @@ struct StartupItemsView: View {
         .padding(.vertical, 3)
     }
 
-    private func badge(_ text: String, _ color: Color) -> some View {
-        Text(text)
-            .font(.caption2)
-            .padding(.horizontal, 5).padding(.vertical, 1)
-            .background(color.opacity(0.15))
-            .foregroundStyle(color)
-            .clipShape(Capsule())
-    }
-
     private func iconName(_ kind: StartupItem.Kind) -> String {
         switch kind {
         case .loginItem: return "person.crop.circle"
@@ -115,12 +106,9 @@ struct StartupItemsView: View {
     private func load() {
         loading = true
         loadedOnce = true
-        Task.detached(priority: .userInitiated) {
-            let found = StartupEngine.all()
-            await MainActor.run {
-                items = found
-                loading = false
-            }
+        Task { @MainActor in
+            items = await Task.detached(priority: .userInitiated) { StartupEngine.all() }.value
+            loading = false
         }
     }
 }

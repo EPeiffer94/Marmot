@@ -43,21 +43,12 @@ struct UpdatesView: View {
     }
 
     private var startState: some View {
-        VStack(spacing: 16) {
-            EmptyState(icon: "arrow.down.app",
-                       title: "App Updates",
-                       message: "Checks every installed app for newer versions using Homebrew, the app's own Sparkle update feed, and the Mac App Store. Nothing installs without your say-so.")
-            Button {
-                check()
-            } label: {
-                Label("Check for Updates", systemImage: "magnifyingglass")
-                    .frame(width: 180)
-            }
-            .controlSize(.large)
-            .buttonStyle(.borderedProminent)
-            Spacer().frame(height: 60)
+        StartScreen(icon: "arrow.down.app",
+                    title: "App Updates",
+                    message: "Checks every installed app for newer versions using Homebrew, the app's own Sparkle update feed, and the Mac App Store. Nothing installs without your say-so.",
+                    buttonLabel: "Check for Updates") {
+            check()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var updateList: some View {
@@ -79,11 +70,7 @@ struct UpdatesView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text(update.channel)
-                        .font(.caption)
-                        .padding(.horizontal, 7).padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.12))
-                        .clipShape(Capsule())
+                    Badge(text: update.channel)
                     actionButton(update)
                 }
                 .padding(.vertical, 4)
@@ -126,15 +113,13 @@ struct UpdatesView: View {
         checking = true
         checkedOnce = true
         message = nil
-        Task.detached(priority: .userInitiated) {
-            let apps = UninstallEngine.installedApps()
-            let found = await UpdateChecker.checkAll(apps: apps)
-            await MainActor.run {
-                updates = found
-                checking = false
-                if Shell.brewPath == nil {
-                    message = "Homebrew not found — only Sparkle and App Store channels were checked."
-                }
+        Task { @MainActor in
+            updates = await Task.detached(priority: .userInitiated) {
+                await UpdateChecker.checkAll(apps: UninstallEngine.installedApps())
+            }.value
+            checking = false
+            if Shell.brewPath == nil {
+                message = "Homebrew not found — only Sparkle and App Store channels were checked."
             }
         }
     }
@@ -143,16 +128,16 @@ struct UpdatesView: View {
         guard let brew = Shell.brewPath else { return }
         let cask = update.id.replacingOccurrences(of: "brew:", with: "")
         upgrading.insert(update.id)
-        Task.detached {
-            let out = Shell.run(brew, ["upgrade", "--cask", cask], timeout: 600)
-            await MainActor.run {
-                upgrading.remove(update.id)
-                if out.succeeded {
-                    updates.removeAll { $0.id == update.id }
-                    message = "Upgraded \(update.appName)."
-                } else {
-                    message = "Upgrade failed: \(out.stderr.prefix(200))"
-                }
+        Task { @MainActor in
+            let out = await Task.detached {
+                Shell.run(brew, ["upgrade", "--cask", cask], timeout: 600)
+            }.value
+            upgrading.remove(update.id)
+            if out.succeeded {
+                updates.removeAll { $0.id == update.id }
+                message = "Upgraded \(update.appName)."
+            } else {
+                message = "Upgrade failed: \(out.stderr.prefix(200))"
             }
         }
     }

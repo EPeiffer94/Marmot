@@ -53,10 +53,11 @@ struct DuplicatesView: View {
     // MARK: States
 
     private var startState: some View {
-        VStack(spacing: 16) {
-            EmptyState(icon: "doc.on.doc",
-                       title: "Duplicate Finder",
-                       message: "Finds files with identical content (verified by hash, not just name) in Downloads, Documents, and Desktop. You choose which copy to keep — removals are trash-first and previewed like everything else.")
+        StartScreen(icon: "doc.on.doc",
+                    title: "Duplicate Finder",
+                    message: "Finds files with identical content (verified by hash, not just name) in Downloads, Documents, and Desktop. You choose which copy to keep — removals are trash-first and previewed like everything else.",
+                    buttonLabel: "Scan for Duplicates",
+                    action: { startScan() }) {
             VStack(spacing: 4) {
                 ForEach(roots, id: \.self) { root in
                     Text(root)
@@ -64,17 +65,7 @@ struct DuplicatesView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            Button {
-                startScan()
-            } label: {
-                Label("Scan for Duplicates", systemImage: "magnifyingglass")
-                    .frame(width: 200)
-            }
-            .controlSize(.large)
-            .buttonStyle(.borderedProminent)
-            Spacer().frame(height: 40)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var scanningState: some View {
@@ -155,12 +146,7 @@ struct DuplicatesView: View {
                         .font(.callout)
                         .lineLimit(1).truncationMode(.middle)
                     if isKeeper {
-                        Text("KEEP")
-                            .font(.caption2.weight(.bold))
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.green.opacity(0.15))
-                            .foregroundStyle(.green)
-                            .clipShape(Capsule())
+                        Badge(text: "KEEP", color: .green)
                     }
                 }
                 Text(file.directory)
@@ -232,13 +218,11 @@ struct DuplicatesView: View {
             DispatchQueue.main.async { progressPath = path }
         }
         let scanRoots = roots.filter { FileManager.default.fileExists(atPath: $0) }
-        Task.detached(priority: .userInitiated) {
-            let found = e.scan(roots: scanRoots)
-            await MainActor.run {
-                groups = found
-                includedGroups = Set(found.map(\.id))
-                scanning = false
-            }
+        Task { @MainActor in
+            let found = await Task.detached(priority: .userInitiated) { e.scan(roots: scanRoots) }.value
+            groups = found
+            includedGroups = Set(found.map(\.id))
+            scanning = false
         }
     }
 

@@ -28,36 +28,18 @@ enum RiskLevel: Int, Codable, Comparable {
     }
 }
 
-struct ChangeItem: Identifiable, Codable, Hashable {
-    let id: UUID
+struct ChangeItem: Identifiable, Codable, Hashable, Sendable {
+    var id = UUID()
     /// Filesystem path for file actions, or the shell command for command actions.
     let target: String
     let action: ChangeAction
-    let sizeBytes: Int64
-    let risk: RiskLevel
+    var sizeBytes: Int64 = 0
+    var risk: RiskLevel = .low
     /// Human explanation of what this is and why it is safe (or not) to remove.
-    let note: String
+    var note: String = ""
     /// Group label used by the preview UI (e.g. "Caches", "Launch Agents").
-    let group: String
-    var isSelected: Bool
-
-    init(target: String,
-         action: ChangeAction,
-         sizeBytes: Int64 = 0,
-         risk: RiskLevel = .low,
-         note: String = "",
-         group: String = "General",
-         isSelected: Bool = true) {
-        self.id = UUID()
-        self.target = target
-        self.action = action
-        self.sizeBytes = sizeBytes
-        self.risk = risk
-        self.note = note
-        self.group = group
-        // High-risk items are never pre-selected.
-        self.isSelected = isSelected && risk != .high
-    }
+    var group: String = "General"
+    var isSelected: Bool = true
 
     var displayName: String {
         if action == .runCommand || action == .runAdminCommand { return target }
@@ -65,13 +47,24 @@ struct ChangeItem: Identifiable, Codable, Hashable {
     }
 }
 
-struct ChangePlan: Identifiable {
+struct ChangePlan: Identifiable, Sendable {
     let id = UUID()
     let title: String
     /// Where this plan came from, e.g. "Cleanup", "Uninstall Photoshop".
     let source: String
     var items: [ChangeItem]
     let createdAt = Date()
+
+    init(title: String, source: String, items: [ChangeItem]) {
+        self.title = title
+        self.source = source
+        // High-risk items are never pre-selected, no matter who built them.
+        self.items = items.map {
+            var item = $0
+            if item.risk == .high { item.isSelected = false }
+            return item
+        }
+    }
 
     var selectedItems: [ChangeItem] { items.filter { $0.isSelected } }
     var selectedSize: Int64 { selectedItems.reduce(0) { $0 + $1.sizeBytes } }
@@ -108,7 +101,7 @@ enum ItemOutcome: String, Codable {
     case failed = "Failed"
 }
 
-struct ItemResult: Identifiable, Codable {
+struct ItemResult: Identifiable, Codable, Sendable {
     let id: UUID
     let item: ChangeItem
     let outcome: ItemOutcome
@@ -122,7 +115,7 @@ struct ItemResult: Identifiable, Codable {
     }
 }
 
-struct ExecutionResult {
+struct ExecutionResult: Sendable {
     let planTitle: String
     let dryRun: Bool
     let results: [ItemResult]

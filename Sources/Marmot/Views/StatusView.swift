@@ -35,7 +35,7 @@ struct StatusView: View {
                     .stroke(Color.primary.opacity(0.08), lineWidth: 8)
                 Circle()
                     .trim(from: 0, to: CGFloat(snap.healthScore) / 100)
-                    .stroke(healthColor.gradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .stroke(snap.healthColor.gradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 Text("\(snap.healthScore)")
                     .font(.title2.weight(.bold).monospacedDigit())
@@ -57,12 +57,6 @@ struct StatusView: View {
         }
         .padding()
         .background(cardBackground)
-    }
-
-    private var healthColor: Color {
-        if snap.healthScore >= 80 { return .green }
-        if snap.healthScore >= 50 { return .orange }
-        return .red
     }
 
     private var healthDescription: String {
@@ -113,8 +107,8 @@ struct StatusView: View {
                       percent: snap.disk.usedPercent, color: .orange)
             HStack(spacing: 14) {
                 labeled("Free", ByteFormat.string(snap.disk.freeBytes))
-                labeled("Read", speed(snap.disk.readPerSec))
-                labeled("Write", speed(snap.disk.writePerSec))
+                labeled("Read", ByteFormat.rate(snap.disk.readPerSec))
+                labeled("Write", ByteFormat.rate(snap.disk.writePerSec))
             }
         }
     }
@@ -122,8 +116,8 @@ struct StatusView: View {
     private var networkCard: some View {
         card("Network", icon: "arrow.up.arrow.down") {
             HStack(spacing: 14) {
-                labeled("Down", speed(snap.network.downPerSec))
-                labeled("Up", speed(snap.network.upPerSec))
+                labeled("Down", ByteFormat.rate(snap.network.downPerSec))
+                labeled("Up", ByteFormat.rate(snap.network.upPerSec))
             }
             Sparkline(values: snap.network.downHistory, color: .blue)
                 .frame(height: 30)
@@ -213,9 +207,5 @@ struct StatusView: View {
             Text(label).font(.caption2).foregroundStyle(.tertiary)
             Text(value).font(.caption.weight(.medium).monospacedDigit())
         }
-    }
-
-    private func speed(_ bytesPerSec: Double) -> String {
-        ByteFormat.string(Int64(max(bytesPerSec, 0))) + "/s"
     }
 }

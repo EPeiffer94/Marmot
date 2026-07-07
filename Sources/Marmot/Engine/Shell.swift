@@ -22,6 +22,8 @@ enum Shell {
         var outData = Data()
         var errData = Data()
         let drainGroup = DispatchGroup()
+        let finished = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in finished.signal() }
 
         do {
             try process.run()
@@ -40,12 +42,13 @@ enum Shell {
             drainGroup.leave()
         }
 
-        let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.05)
+        // Event-driven wait (no polling); escalate to terminate on timeout.
+        if finished.wait(timeout: .now() + timeout) == .timedOut {
+            process.terminate()
+            if finished.wait(timeout: .now() + 5) == .timedOut {
+                return Output(status: -1, stdout: "", stderr: "Timed out: \(launchPath)")
+            }
         }
-        if process.isRunning { process.terminate() }
-        process.waitUntilExit()
         drainGroup.wait()
 
         return Output(status: process.terminationStatus,
