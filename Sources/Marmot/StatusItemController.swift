@@ -47,7 +47,7 @@ final class StatusItemController: NSObject {
     }
 
     /// UserDefaults notifications can arrive on any thread; hop to the actor.
-    nonisolated @objc private func defaultsChanged() {
+    @objc nonisolated private func defaultsChanged() {
         Task { @MainActor [weak self] in
             self?.syncVisibility()
         }
