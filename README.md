@@ -41,7 +41,26 @@ And even then:
 
 ---
 
-## 🚀 Getting started
+## 📦 Download (no Xcode needed)
+
+Grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.com/EPeiffer94/marmot/releases), unzip it, and drag **Marmot.app** into your **Applications** folder.
+
+**First launch:** Marmot is free community software and isn't notarized through Apple's paid developer program, so macOS will balk the first time. Here's the one-time dance: 💃
+
+1. Double-click Marmot → macOS says it can't verify the app. Click **Done/OK** (not "Move to Trash"!)
+2. Open **System Settings → Privacy & Security**, scroll down, and click **"Open Anyway"** next to the Marmot message
+3. Confirm once more — and that's it, forever. 🎉
+
+<details>
+<summary>Terminal alternative (one line)</summary>
+
+```sh
+xattr -cr /Applications/Marmot.app && open /Applications/Marmot.app
+```
+This clears the quarantine flag macOS puts on downloaded files.
+</details>
+
+## 🚀 Building from source
 
 **You'll need:** macOS 13+ and Xcode (free on the App Store) or the full Swift toolchain.
 
