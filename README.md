@@ -46,7 +46,7 @@ And even then:
 **You'll need:** macOS 13+ and Xcode (free on the App Store) or the full Swift toolchain.
 
 ```sh
-git clone https://github.com/YOUR_USERNAME/marmot.git
+git clone https://github.com/EPeiffer94/marmot.git
 cd marmot
 make run
 ```
