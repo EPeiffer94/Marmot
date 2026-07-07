@@ -34,12 +34,28 @@ final class DiskScanner {
     static let maxChildrenPerDir = 60
     static let largeFileThreshold: Int64 = 100 * 1024 * 1024
 
+    /// Cloud-backed locations (OneDrive, Google Drive, Dropbox, iCloud Drive).
+    /// Their contents are mostly placeholder files; enumerating them stalls on
+    /// the network file provider, so they are skipped — unless the user
+    /// explicitly chooses to scan a folder inside one.
+    static let cloudRoots: [String] = [
+        NSHomeDirectory() + "/Library/CloudStorage",
+        NSHomeDirectory() + "/Library/Mobile Documents"
+    ]
+
     private(set) var largeFiles: [LargeFile] = []
     var isCancelled = false
     var onProgress: ((String) -> Void)?
+    private var skipCloud = true
 
     func scan(root: String) -> FileNode {
         largeFiles = []
+        // If the user deliberately picked a folder inside a cloud root,
+        // honor that choice and scan it.
+        let normalizedRoot = SafetyRules.normalize(root)
+        skipCloud = !Self.cloudRoots.contains {
+            normalizedRoot == $0 || normalizedRoot.hasPrefix($0 + "/")
+        }
         let node = scanNode(path: root, depth: 0)
         largeFiles.sort { $0.sizeBytes > $1.sizeBytes }
         if largeFiles.count > 100 { largeFiles = Array(largeFiles.prefix(100)) }
@@ -79,6 +95,12 @@ final class DiskScanner {
             // Skip firmlinked/system mounts that inflate results.
             if depth == 0 && (childName == "Volumes" || childName == "System") && path == "/" { continue }
             let childPath = path == "/" ? "/" + childName : path + "/" + childName
+            // Skip cloud-provider folders (placeholder files; scanning hangs).
+            if skipCloud && Self.cloudRoots.contains(where: { childPath == $0 || childPath.hasPrefix($0 + "/") }) {
+                children.append(FileNode(name: childName + " (cloud — skipped)",
+                                         path: childPath, isDirectory: true, sizeBytes: 0))
+                continue
+            }
             // Don't cross device boundaries or follow symlinks.
             if let attrs = try? FileManager.default.attributesOfItem(atPath: childPath),
                (attrs[.type] as? FileAttributeType) == .typeSymbolicLink { continue }
