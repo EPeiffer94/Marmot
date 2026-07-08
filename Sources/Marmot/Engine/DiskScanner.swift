@@ -47,6 +47,8 @@ final class DiskScanner {
     var isCancelled = false
     var onProgress: ((String) -> Void)?
     private var skipCloud = true
+    /// Guards `largeFiles` — top levels of the scan run in parallel.
+    private let largeFilesLock = NSLock()
 
     func scan(root: String) -> FileNode {
         largeFiles = []
@@ -64,14 +66,15 @@ final class DiskScanner {
 
     private func scanNode(path: String, depth: Int) -> FileNode {
         let name = (path as NSString).lastPathComponent
-        let url = URL(fileURLWithPath: path)
         var isDir: ObjCBool = false
         FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
 
         if !isDir.boolValue {
-            let size = FileSizer.fileSize(url)
+            let size = FileSizer.fileSize(URL(fileURLWithPath: path))
             if size >= Self.largeFileThreshold {
+                largeFilesLock.lock()
                 largeFiles.append(LargeFile(path: path, sizeBytes: size))
+                largeFilesLock.unlock()
             }
             return FileNode(name: name, path: path, isDirectory: false, sizeBytes: size)
         }
@@ -87,29 +90,28 @@ final class DiskScanner {
             return FileNode(name: name, path: path, isDirectory: true, sizeBytes: size)
         }
 
-        let childPaths = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
+        let childNames = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
         var children: [FileNode] = []
-        var total: Int64 = 0
-        for childName in childPaths {
-            if isCancelled { break }
-            // Skip firmlinked/system mounts that inflate results.
-            if depth == 0 && (childName == "Volumes" || childName == "System") && path == "/" { continue }
-            let childPath = path == "/" ? "/" + childName : path + "/" + childName
-            // Skip cloud-provider folders (placeholder files; scanning hangs).
-            if skipCloud && Self.cloudRoots.contains(where: { childPath == $0 || childPath.hasPrefix($0 + "/") }) {
-                children.append(FileNode(name: childName + " (cloud — skipped)",
-                                         path: childPath, isDirectory: true, sizeBytes: 0))
-                continue
+
+        if depth <= 1 && childNames.count > 4 {
+            // Fan the top levels out across all cores.
+            var slots = [FileNode?](repeating: nil, count: childNames.count)
+            slots.withUnsafeMutableBufferPointer { buffer in
+                DispatchQueue.concurrentPerform(iterations: childNames.count) { index in
+                    buffer[index] = self.childNode(named: childNames[index], parent: path, depth: depth)
+                }
             }
-            // Don't cross device boundaries or follow symlinks.
-            if let attrs = try? FileManager.default.attributesOfItem(atPath: childPath),
-               (attrs[.type] as? FileAttributeType) == .typeSymbolicLink { continue }
-            let child = scanNode(path: childPath, depth: depth + 1)
-            child.parent = nil
-            total += child.sizeBytes
-            children.append(child)
+            children = slots.compactMap { $0 }
+        } else {
+            for childName in childNames {
+                if isCancelled { break }
+                if let child = childNode(named: childName, parent: path, depth: depth) {
+                    children.append(child)
+                }
+            }
         }
 
+        let total = children.reduce(Int64(0)) { $0 + $1.sizeBytes }
         children.sort { $0.sizeBytes > $1.sizeBytes }
         // Collapse the long tail into an "other" node to bound memory.
         if children.count > Self.maxChildrenPerDir {
@@ -127,5 +129,24 @@ final class DiskScanner {
                             isDirectory: true, sizeBytes: total, children: children)
         children.forEach { $0.parent = node }
         return node
+    }
+
+    /// Builds the node for one directory entry, applying all skip rules.
+    /// Thread-safe: called concurrently for the top scan levels.
+    private func childNode(named childName: String, parent path: String, depth: Int) -> FileNode? {
+        if isCancelled { return nil }
+        // Skip firmlinked/system mounts that inflate results.
+        if depth == 0 && path == "/" && (childName == "Volumes" || childName == "System") { return nil }
+        let childPath = path == "/" ? "/" + childName : path + "/" + childName
+        // Skip cloud-provider folders (placeholder files; scanning hangs).
+        if skipCloud && Self.cloudRoots.contains(where: { childPath == $0 || childPath.hasPrefix($0 + "/") }) {
+            return FileNode(name: childName + " (cloud — skipped)",
+                            path: childPath, isDirectory: true, sizeBytes: 0)
+        }
+        // Don't follow symlinks (cheap lstat, no Foundation overhead).
+        var sb = stat()
+        guard lstat(childPath, &sb) == 0 else { return nil }
+        if (sb.st_mode & S_IFMT) == S_IFLNK { return nil }
+        return scanNode(path: childPath, depth: depth + 1)
     }
 }
