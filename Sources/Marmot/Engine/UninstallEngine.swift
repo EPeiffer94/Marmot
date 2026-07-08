@@ -18,6 +18,9 @@ struct InstalledApp: Identifiable, Hashable {
         }
     }
 
+    /// Sortable stand-in for the optional last-used date.
+    var lastUsedOrDistantPast: Date { lastUsed ?? .distantPast }
+
     static func == (lhs: InstalledApp, rhs: InstalledApp) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
