@@ -1,6 +1,9 @@
 import Foundation
+import Darwin
 
-/// Fast-enough recursive size computation using allocated sizes.
+/// Fast recursive size computation using allocated sizes.
+/// Traversal uses the C `fts` API — several times faster than
+/// FileManager.enumerator because it never allocates per-file objects.
 enum FileSizer {
 
     static func size(of path: String) -> Int64 {
@@ -24,7 +27,33 @@ enum FileSizer {
     }
 
     /// Single-threaded recursive size (also handles plain files).
+    /// fts-based; falls back to FileManager if fts can't open the path.
     static func serialSize(of path: String) -> Int64 {
+        guard let dup = strdup(path) else { return foundationSize(of: path) }
+        var argv: [UnsafeMutablePointer<CChar>?] = [dup, nil]
+        defer { free(dup) }
+
+        guard let fts = fts_open(&argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else {
+            return foundationSize(of: path)
+        }
+        defer { fts_close(fts) }
+
+        var total: Int64 = 0
+        while let entry = fts_read(fts) {
+            let info = Int32(entry.pointee.fts_info)
+            // Regular files and directory inodes, like `du`. FTS_PHYSICAL
+            // never follows symlinks; FTS_XDEV never crosses volumes.
+            if info == FTS_F || info == FTS_D {
+                if let st = entry.pointee.fts_statp {
+                    total += Int64(st.pointee.st_blocks) * 512
+                }
+            }
+        }
+        return total
+    }
+
+    /// Foundation fallback, used only when fts fails to open the path.
+    static func foundationSize(of path: String) -> Int64 {
         let url = URL(fileURLWithPath: path)
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir) else { return 0 }
