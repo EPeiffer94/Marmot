@@ -10,13 +10,17 @@ struct UninstallView: View {
     @State private var selectedApp: InstalledApp?
     @State private var buildingPlan = false
     @State private var activePlan: ChangePlan?
+    @State private var sortOrder = [KeyPathComparator(\InstalledApp.name)]
 
     var filtered: [InstalledApp] {
-        guard !search.isEmpty else { return inventory.apps }
-        return inventory.apps.filter {
-            $0.name.localizedCaseInsensitiveContains(search) ||
-            $0.bundleID.localizedCaseInsensitiveContains(search)
+        var apps = inventory.apps
+        if !search.isEmpty {
+            apps = apps.filter {
+                $0.name.localizedCaseInsensitiveContains(search) ||
+                $0.bundleID.localizedCaseInsensitiveContains(search)
+            }
         }
+        return apps.sorted(using: sortOrder)
     }
 
     var body: some View {
@@ -61,8 +65,8 @@ struct UninstallView: View {
         Table(filtered, selection: Binding(
             get: { selectedApp.map { Set([$0.id]) } ?? [] },
             set: { ids in selectedApp = filtered.first { ids.contains($0.id) } }
-        )) {
-            TableColumn("App") { app in
+        ), sortOrder: $sortOrder) {
+            TableColumn("App", value: \.name) { app in
                 HStack(spacing: 8) {
                     if let icon = app.icon {
                         Image(nsImage: icon)
@@ -80,18 +84,18 @@ struct UninstallView: View {
                 Text(app.version).foregroundStyle(.secondary)
             }
             .width(90)
-            TableColumn("Size") { app in
+            TableColumn("Size", value: \.sizeBytes) { app in
                 Text(app.sizeBytes > 0 ? ByteFormat.string(app.sizeBytes) : "…")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
             .width(90)
-            TableColumn("Last Used") { app in
+            TableColumn("Last Used", value: \.lastUsedOrDistantPast) { app in
                 Text(app.lastUsed.map { $0.formatted(.relative(presentation: .named)) } ?? "—")
                     .foregroundStyle(.secondary)
             }
             .width(120)
-            TableColumn("Bundle ID") { app in
+            TableColumn("Bundle ID", value: \.bundleID) { app in
                 Text(app.bundleID)
                     .font(.caption.monospaced())
                     .foregroundStyle(.tertiary)
