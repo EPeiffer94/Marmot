@@ -37,6 +37,7 @@ struct UninstallView: View {
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
+                .keyboardShortcut("r", modifiers: .command)
                 Button {
                     buildPlan()
                 } label: {

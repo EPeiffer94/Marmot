@@ -30,6 +30,7 @@ struct StartupItemsView: View {
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
+                .keyboardShortcut("r", modifiers: .command)
                 .disabled(loading)
             }
         }
