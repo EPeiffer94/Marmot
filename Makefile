@@ -1,5 +1,5 @@
 APP_NAME = Marmot
-VERSION = 1.1.1
+VERSION = 1.2.0
 BUILD_DIR = .build/release
 BUNDLE = $(APP_NAME).app
 CONTENTS = $(BUNDLE)/Contents
