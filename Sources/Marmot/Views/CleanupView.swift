@@ -2,20 +2,18 @@ import SwiftUI
 
 /// Visual cleanup review: scan the known junk locations, review each category
 /// and item, then hand everything to the PlanPreview sheet for dry-run/apply.
+/// Results come from the shared CleanupModel, so cached numbers appear
+/// instantly and the Dashboard stays in sync.
 struct CleanupView: View {
 
-    @State private var categories: [CleanupCategory] = CleanupScanner.categories()
+    @ObservedObject private var model = CleanupModel.shared
     @State private var selectedCategoryIDs: Set<String> = []
-    @State private var scanning = false
-    @State private var scannedOnce = false
     @State private var activePlan: ChangePlan?
     @State private var lastResultSummary: String?
 
-    var totalFound: Int64 { categories.reduce(0) { $0 + $1.size } }
-
     var body: some View {
         VStack(spacing: 0) {
-            if !scannedOnce && !scanning {
+            if !model.scannedOnce && !model.scanning {
                 startState
             } else {
                 categoryList
@@ -27,11 +25,30 @@ struct CleanupView: View {
                 activePlan = nil
                 if let r = result, !r.dryRun {
                     lastResultSummary = "Freed \(ByteFormat.string(r.freedBytes))"
-                    Task { await rescan() }
+                    model.rescan()
                 }
             }
         }
-        .navigationSubtitle(scannedOnce ? "Found \(ByteFormat.string(totalFound)) of removable data" : "")
+        .onAppear {
+            if selectedCategoryIDs.isEmpty {
+                selectedCategoryIDs = model.nonEmptyCategoryIDs
+            }
+        }
+        .onChange(of: model.scanning) { isScanning in
+            if !isScanning {
+                selectedCategoryIDs = model.nonEmptyCategoryIDs
+            }
+        }
+        .navigationSubtitle(subtitle)
+    }
+
+    private var subtitle: String {
+        guard model.scannedOnce else { return "" }
+        var text = "Found \(ByteFormat.string(model.totalFound)) of removable data"
+        if let date = model.lastScan, !model.scanning {
+            text += " — scanned \(date.formatted(.relative(presentation: .named)))"
+        }
+        return text
     }
 
     // MARK: Start state
@@ -41,7 +58,7 @@ struct CleanupView: View {
                     title: "Deep Cleanup",
                     message: "Scans caches, logs, browser data, developer junk, orphaned app data, installers, build artifacts, and Trash. Nothing is removed without your review — every change is shown first, and you can dry-run it.",
                     buttonLabel: "Scan My Mac") {
-            Task { await rescan() }
+            model.rescan()
         }
     }
 
@@ -53,11 +70,12 @@ struct CleanupView: View {
                 Label(summary, systemImage: "checkmark.seal.fill")
                     .foregroundStyle(.green)
             }
-            ForEach(categories) { category in
+            ForEach(model.categories) { category in
                 categoryRow(category)
             }
         }
         .listStyle(.inset(alternatesRowBackgrounds: true))
+        .animation(.default, value: model.totalFound)
     }
 
     private func categoryRow(_ category: CleanupCategory) -> some View {
@@ -110,54 +128,31 @@ struct CleanupView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup {
-            if scanning {
+            if model.scanning {
                 ProgressView().controlSize(.small)
             }
             Button {
-                Task { await rescan() }
+                model.rescan()
             } label: {
                 Label("Rescan", systemImage: "arrow.clockwise")
             }
-            .disabled(scanning)
+            .keyboardShortcut("r", modifiers: .command)
+            .disabled(model.scanning)
 
             Button {
                 reviewCategories(Array(selectedCategoryIDs))
             } label: {
                 Label("Review Selected…", systemImage: "eye")
             }
-            .disabled(selectedCategoryIDs.isEmpty || scanning)
+            .disabled(selectedCategoryIDs.isEmpty || model.scanning)
             .help("Opens the change preview for all selected categories. You can dry-run before applying.")
         }
     }
 
     // MARK: Actions
 
-    @MainActor
-    private func rescan() async {
-        scanning = true
-        scannedOnce = true
-        lastResultSummary = nil
-        for i in categories.indices { categories[i].isScanning = true; categories[i].items = [] }
-
-        let base = CleanupScanner.categories()
-        await withTaskGroup(of: (Int, [ChangeItem]).self) { group in
-            for (index, category) in base.enumerated() {
-                group.addTask {
-                    let items = CleanupScanner.scan(categoryID: category.id)
-                    return (index, items)
-                }
-            }
-            for await (index, items) in group {
-                categories[index].items = items
-                categories[index].isScanning = false
-                if !items.isEmpty { selectedCategoryIDs.insert(categories[index].id) }
-            }
-        }
-        scanning = false
-    }
-
     private func reviewCategories(_ ids: [String]) {
-        let selected = categories.filter { ids.contains($0.id) }
+        let selected = model.categories.filter { ids.contains($0.id) }
         let items = selected.flatMap(\.items)
         guard !items.isEmpty else { return }
         let names = selected.map(\.name).joined(separator: ", ")

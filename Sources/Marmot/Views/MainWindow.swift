@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum SidebarSection: String, CaseIterable, Identifiable {
+    case dashboard = "Dashboard"
     case cleanup = "Cleanup"
     case uninstall = "Uninstaller"
     case unusedApps = "Unused Apps"
@@ -16,6 +17,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .dashboard: return "house"
         case .cleanup: return "sparkles"
         case .uninstall: return "trash.square"
         case .unusedApps: return "hourglass"
@@ -28,11 +30,29 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .history: return "clock.arrow.circlepath"
         }
     }
+
+    /// One-line description used by the Dashboard shortcut grid.
+    var blurb: String {
+        switch self {
+        case .dashboard: return "System overview"
+        case .cleanup: return "Reclaim disk space safely"
+        case .uninstall: return "Remove apps and their leftovers"
+        case .unusedApps: return "Find apps you never open"
+        case .updates: return "Check for newer versions"
+        case .duplicates: return "Find identical files"
+        case .diskMap: return "See where space goes"
+        case .startup: return "Manage login and launch items"
+        case .maintenance: return "Fix common system glitches"
+        case .status: return "Live CPU, memory, network"
+        case .history: return "Everything Marmot has done"
+        }
+    }
 }
 
 struct MainWindow: View {
-    @State private var selection: SidebarSection? = .cleanup
+    @State private var selection: SidebarSection? = .dashboard
     @EnvironmentObject var stats: StatsSampler
+    @AppStorage("marmot.onboarded") private var onboarded = false
 
     var body: some View {
         NavigationSplitView {
@@ -45,7 +65,8 @@ struct MainWindow: View {
                 sidebarFooter
             }
         } detail: {
-            switch selection ?? .cleanup {
+            switch selection ?? .dashboard {
+            case .dashboard: DashboardView { selection = $0 }
             case .cleanup: CleanupView()
             case .uninstall: UninstallView()
             case .unusedApps: UnusedAppsView()
@@ -59,6 +80,12 @@ struct MainWindow: View {
             }
         }
         .navigationTitle("Marmot")
+        .sheet(isPresented: Binding(
+            get: { !onboarded },
+            set: { if !$0 { onboarded = true } }
+        )) {
+            OnboardingView { onboarded = true }
+        }
     }
 
     private var sidebarFooter: some View {

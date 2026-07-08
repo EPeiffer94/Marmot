@@ -183,6 +183,7 @@ struct DuplicatesView: View {
             } label: {
                 Label("Rescan", systemImage: "arrow.clockwise")
             }
+            .keyboardShortcut("r", modifiers: .command)
             .disabled(scanning)
             Button {
                 buildPlan()

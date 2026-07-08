@@ -14,6 +14,7 @@ struct DiskMapView: View {
     @State private var activePlan: ChangePlan?
     @State private var showLargeFiles = false
     @State private var scanner: DiskScanner?
+    @State private var hoveredNode: FileNode?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,7 +28,10 @@ struct DiskMapView: View {
                 } else {
                     TreemapView(node: node,
                                 onDescend: { currentNode = $0 },
-                                onDelete: { proposeDelete($0) })
+                                onDelete: { proposeDelete($0) },
+                                onHoverNode: { hoveredNode = $0 })
+                    Divider()
+                    hoverBar
                 }
             } else {
                 startState
@@ -103,6 +107,31 @@ struct DiskMapView: View {
         .padding(.vertical, 8)
     }
 
+    /// Bottom info bar showing whatever block the mouse is over.
+    private var hoverBar: some View {
+        HStack(spacing: 8) {
+            if let node = hoveredNode {
+                Image(systemName: node.isDirectory ? "folder.fill" : "doc.fill")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                Text(node.path)
+                    .font(.caption.monospaced())
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Text(ByteFormat.string(node.sizeBytes))
+                    .font(.caption.weight(.semibold).monospacedDigit())
+            } else {
+                Text("Hover a block for details — click to zoom, right-click for actions")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+    }
+
     private func ancestry(of node: FileNode) -> [FileNode] {
         var chain: [FileNode] = [node]
         var cursor = node
@@ -163,6 +192,7 @@ struct DiskMapView: View {
             } label: {
                 Label("Rescan", systemImage: "arrow.clockwise")
             }
+            .keyboardShortcut("r", modifiers: .command)
             .disabled(scanning)
         }
     }
@@ -227,6 +257,7 @@ struct TreemapView: View {
     let node: FileNode
     let onDescend: (FileNode) -> Void
     let onDelete: (FileNode) -> Void
+    var onHoverNode: (FileNode?) -> Void = { _ in }
 
     @State private var hovered: UUID?
 
@@ -250,12 +281,30 @@ struct TreemapView: View {
         .padding(4)
     }
 
+    /// Directories cycle through the palette; files are colored by type so
+    /// media, archives, code, and documents are visually distinct.
+    private func cellColor(_ cell: TreemapLayout.Cell) -> Color {
+        if cell.node.isDirectory {
+            let index = node.children.firstIndex { $0.id == cell.node.id } ?? 0
+            return Palette.color(for: index)
+        }
+        switch (cell.node.name as NSString).pathExtension.lowercased() {
+        case "mp4", "mov", "mkv", "avi", "m4v", "webm": return .purple
+        case "jpg", "jpeg", "png", "heic", "gif", "tiff", "raw", "cr2", "arw": return .pink
+        case "mp3", "m4a", "wav", "flac", "aac", "aiff": return .indigo
+        case "zip", "dmg", "pkg", "tar", "gz", "7z", "rar", "iso", "xip": return .orange
+        case "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "pages", "key", "numbers": return .teal
+        case "swift", "js", "ts", "py", "rb", "go", "rs", "c", "cpp", "h", "java", "json", "xml", "html", "css": return .blue
+        case "app": return .red
+        default: return .gray
+        }
+    }
+
     @ViewBuilder
     private func cellView(_ cell: TreemapLayout.Cell) -> some View {
-        let index = node.children.firstIndex { $0.id == cell.node.id } ?? 0
-        let color = Palette.color(for: index)
+        let color = cellColor(cell)
         RoundedRectangle(cornerRadius: 3)
-            .fill(color.opacity(hovered == cell.id ? 0.85 : (cell.node.isDirectory ? 0.65 : 0.4)))
+            .fill(color.opacity(hovered == cell.id ? 0.85 : (cell.node.isDirectory ? 0.65 : 0.45)))
             .overlay(
                 RoundedRectangle(cornerRadius: 3)
                     .strokeBorder(Color.black.opacity(0.15), lineWidth: 0.5)
@@ -274,7 +323,15 @@ struct TreemapView: View {
                     .foregroundStyle(.white)
                 }
             }
-            .onHover { inside in hovered = inside ? cell.id : (hovered == cell.id ? nil : hovered) }
+            .onHover { inside in
+                if inside {
+                    hovered = cell.id
+                    onHoverNode(cell.node)
+                } else if hovered == cell.id {
+                    hovered = nil
+                    onHoverNode(nil)
+                }
+            }
             .onTapGesture {
                 if cell.node.isDirectory && !cell.node.children.isEmpty {
                     onDescend(cell.node)

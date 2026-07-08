@@ -4,6 +4,27 @@ import Foundation
 enum FileSizer {
 
     static func size(of path: String) -> Int64 {
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir) else { return 0 }
+        if !isDir.boolValue {
+            return fileSize(URL(fileURLWithPath: path))
+        }
+        // Wide directories: measure immediate children in parallel.
+        let children = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
+        if children.count >= 8 {
+            var sizes = [Int64](repeating: 0, count: children.count)
+            sizes.withUnsafeMutableBufferPointer { buffer in
+                DispatchQueue.concurrentPerform(iterations: children.count) { index in
+                    buffer[index] = serialSize(of: path + "/" + children[index])
+                }
+            }
+            return sizes.reduce(0, +)
+        }
+        return serialSize(of: path)
+    }
+
+    /// Single-threaded recursive size (also handles plain files).
+    static func serialSize(of path: String) -> Int64 {
         let url = URL(fileURLWithPath: path)
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir) else { return 0 }
