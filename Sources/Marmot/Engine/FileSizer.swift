@@ -29,11 +29,19 @@ enum FileSizer {
     /// Single-threaded recursive size (also handles plain files).
     /// fts-based; falls back to FileManager if fts can't open the path.
     static func serialSize(of path: String) -> Int64 {
+        // fts keeps reading the argv array during the whole traversal, so it
+        // must be stable heap memory — a Swift array passed with `&` is only
+        // valid for the fts_open call itself and dangles afterwards.
         guard let dup = strdup(path) else { return foundationSize(of: path) }
-        var argv: [UnsafeMutablePointer<CChar>?] = [dup, nil]
-        defer { free(dup) }
+        let argv = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: 2)
+        argv[0] = dup
+        argv[1] = nil
+        defer {
+            free(dup)
+            argv.deallocate()
+        }
 
-        guard let fts = fts_open(&argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else {
+        guard let fts = fts_open(argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else {
             return foundationSize(of: path)
         }
         defer { fts_close(fts) }
