@@ -46,7 +46,7 @@ And even then:
 
 ## 📦 Download (no Xcode needed)
 
-Grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.com/EPeiffer94/marmot/releases), unzip it, and drag **Marmot.app** into your **Applications** folder.
+Grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.com/EPeiffer94/Marmot/releases), unzip it, and drag **Marmot.app** into your **Applications** folder.
 
 **First launch:** Marmot is free community software and isn't notarized through Apple's paid developer program, so macOS will balk the first time. Here's the one-time dance: 💃
 
@@ -68,7 +68,7 @@ This clears the quarantine flag macOS puts on downloaded files.
 **You'll need:** macOS 13+ and Xcode (free on the App Store) or the full Swift toolchain.
 
 ```sh
-git clone https://github.com/EPeiffer94/marmot.git
+git clone https://github.com/EPeiffer94/Marmot.git
 cd marmot
 make run
 ```
