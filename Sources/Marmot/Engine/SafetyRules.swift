@@ -73,14 +73,14 @@ enum SafetyRules {
     static var purgeRoots: [String] {
         let defaults = ["/Projects", "/GitHub", "/dev", "/Code", "/Developer", "/Documents/GitHub", "/repos"]
             .map { home + $0 }
-        let custom = UserDefaults.standard.stringArray(forKey: "marmot.purgePaths") ?? []
+        let custom = UserDefaults.standard.stringArray(forKey: Prefs.purgePaths) ?? []
         return defaults + custom
     }
 
     /// User-managed whitelist: paths the user never wants touched.
     static var whitelist: [String] {
-        get { UserDefaults.standard.stringArray(forKey: "marmot.whitelist") ?? [] }
-        set { UserDefaults.standard.set(newValue, forKey: "marmot.whitelist") }
+        get { UserDefaults.standard.stringArray(forKey: Prefs.whitelist) ?? [] }
+        set { UserDefaults.standard.set(newValue, forKey: Prefs.whitelist) }
     }
 
     static func isWhitelisted(_ path: String) -> Bool {

@@ -18,7 +18,7 @@ struct PlanPreviewView: View {
 
     @State private var phase: Phase = .reviewing
     @State private var confirmApply = false
-    @AppStorage("marmot.defaultDryRun") private var defaultDryRun = true
+    @AppStorage(Prefs.defaultDryRun) private var defaultDryRun = true
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -42,8 +42,15 @@ struct PlanPreviewView: View {
             isPresented: $confirmApply,
             titleVisibility: .visible
         ) {
-            Button("Apply — \(plan.summary)", role: .destructive) { run(dryRun: false) }
-            Button("Run as Dry Run Instead") { run(dryRun: true) }
+            // The Settings toggle controls which action leads: cautious users
+            // get the dry run offered first.
+            if defaultDryRun {
+                Button("Run as Dry Run First") { run(dryRun: true) }
+                Button("Apply — \(plan.summary)", role: .destructive) { run(dryRun: false) }
+            } else {
+                Button("Apply — \(plan.summary)", role: .destructive) { run(dryRun: false) }
+                Button("Run as Dry Run Instead") { run(dryRun: true) }
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(applyWarning)

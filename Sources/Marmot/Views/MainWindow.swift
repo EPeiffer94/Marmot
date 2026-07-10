@@ -52,7 +52,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 struct MainWindow: View {
     @State private var selection: SidebarSection? = .dashboard
     @EnvironmentObject var stats: StatsSampler
-    @AppStorage("marmot.onboarded") private var onboarded = false
+    @AppStorage(Prefs.onboarded) private var onboarded = false
 
     var body: some View {
         NavigationSplitView {

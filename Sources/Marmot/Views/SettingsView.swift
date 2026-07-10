@@ -2,11 +2,11 @@ import SwiftUI
 
 struct SettingsView: View {
 
-    @AppStorage("marmot.defaultDryRun") private var defaultDryRun = true
-    @AppStorage("marmot.hudEnabled") private var hudEnabled = true
+    @AppStorage(Prefs.defaultDryRun) private var defaultDryRun = true
+    @AppStorage(Prefs.hudEnabled) private var hudEnabled = true
     @State private var whitelist: [String] = SafetyRules.whitelist
     @State private var newPath = ""
-    @State private var purgePaths: [String] = UserDefaults.standard.stringArray(forKey: "marmot.purgePaths") ?? []
+    @State private var purgePaths: [String] = UserDefaults.standard.stringArray(forKey: Prefs.purgePaths) ?? []
     @State private var newPurgePath = ""
 
     var body: some View {
@@ -80,7 +80,7 @@ struct SettingsView: View {
                         Spacer()
                         Button {
                             purgePaths.removeAll { $0 == path }
-                            UserDefaults.standard.set(purgePaths, forKey: "marmot.purgePaths")
+                            UserDefaults.standard.set(purgePaths, forKey: Prefs.purgePaths)
                         } label: {
                             Image(systemName: "minus.circle")
                         }
@@ -95,7 +95,7 @@ struct SettingsView: View {
                     let path = SafetyRules.normalize(newPurgePath)
                     guard !path.isEmpty, !purgePaths.contains(path) else { return }
                     purgePaths.append(path)
-                    UserDefaults.standard.set(purgePaths, forKey: "marmot.purgePaths")
+                    UserDefaults.standard.set(purgePaths, forKey: Prefs.purgePaths)
                     newPurgePath = ""
                 }
                 .disabled(newPurgePath.trimmingCharacters(in: .whitespaces).isEmpty)

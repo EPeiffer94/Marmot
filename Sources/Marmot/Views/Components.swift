@@ -45,6 +45,7 @@ extension SystemSnapshot {
         return .red
     }
 }
+// (HealthRing below derives its own color from the same thresholds.)
 
 extension ByteFormat {
     static func rate(_ bytesPerSec: Double) -> String {
@@ -220,6 +221,67 @@ enum Palette {
 
     static func color(for index: Int) -> Color {
         colors[index % colors.count]
+    }
+}
+
+// MARK: - Card chrome (shared by Dashboard and Live Status)
+
+extension View {
+    func cardStyle() -> some View {
+        background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.primary.opacity(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(Color.primary.opacity(0.06))
+                )
+        )
+    }
+}
+
+// MARK: - Health ring
+
+struct HealthRing: View {
+    let score: Int
+    var lineWidth: CGFloat = 8
+    var caption: String? = nil
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.primary.opacity(0.08), lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: CGFloat(score) / 100)
+                .stroke(color.gradient, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            VStack(spacing: 0) {
+                Text("\(score)")
+                    .font(.title2.weight(.bold).monospacedDigit())
+                if let caption {
+                    Text(caption)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .animation(.easeOut, value: score)
+    }
+
+    private var color: Color {
+        if score >= 80 { return .green }
+        if score >= 50 { return .orange }
+        return .red
+    }
+}
+
+// MARK: - Loading placeholder
+
+struct LoadingState: View {
+    let text: String
+
+    var body: some View {
+        ProgressView(text)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

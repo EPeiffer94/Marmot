@@ -30,18 +30,8 @@ struct StatusView: View {
 
     private var healthHeader: some View {
         HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 8)
-                Circle()
-                    .trim(from: 0, to: CGFloat(snap.healthScore) / 100)
-                    .stroke(snap.healthColor.gradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text("\(snap.healthScore)")
-                    .font(.title2.weight(.bold).monospacedDigit())
-            }
-            .frame(width: 72, height: 72)
-            .animation(.easeOut, value: snap.healthScore)
+            HealthRing(score: snap.healthScore)
+                .frame(width: 72, height: 72)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("System Health")
@@ -56,7 +46,7 @@ struct StatusView: View {
             Spacer()
         }
         .padding()
-        .background(cardBackground)
+        .cardStyle()
     }
 
     private var healthDescription: String {
@@ -179,16 +169,7 @@ struct StatusView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(cardBackground)
-    }
-
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Color.primary.opacity(0.04))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(Color.primary.opacity(0.06))
-            )
+        .cardStyle()
     }
 
     private func metricRow(_ label: String, value: String, percent: Double, color: Color) -> some View {

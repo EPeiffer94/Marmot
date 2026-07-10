@@ -1,5 +1,8 @@
 APP_NAME = Marmot
+# Single source of truth for the version — stamped into the bundle's
+# Info.plist at build time. Override per-invocation: make release VERSION=x.y.z
 VERSION = 1.2.0
+BUILD_NUM = $(shell git rev-list --count HEAD 2>/dev/null || echo 1)
 BUILD_DIR = .build/release
 BUNDLE = $(APP_NAME).app
 CONTENTS = $(BUNDLE)/Contents
@@ -17,6 +20,8 @@ bundle: build
 	mkdir -p $(CONTENTS)/MacOS $(CONTENTS)/Resources
 	cp $(BUILD_DIR)/$(APP_NAME) $(CONTENTS)/MacOS/$(APP_NAME)
 	cp Resources/Info.plist $(CONTENTS)/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(CONTENTS)/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(BUILD_NUM)" $(CONTENTS)/Info.plist
 	@if [ ! -f Resources/AppIcon.icns ] && [ -f Resources/AppIcon.png ]; then sh scripts/make-icon.sh; fi
 	@if [ -f Resources/AppIcon.icns ]; then cp Resources/AppIcon.icns $(CONTENTS)/Resources/AppIcon.icns; fi
 	codesign --force --deep --sign - $(BUNDLE)

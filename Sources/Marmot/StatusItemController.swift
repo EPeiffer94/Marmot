@@ -43,7 +43,7 @@ final class StatusItemController: NSObject {
     }
 
     private var hudEnabled: Bool {
-        UserDefaults.standard.object(forKey: "marmot.hudEnabled") as? Bool ?? true
+        UserDefaults.standard.object(forKey: Prefs.hudEnabled) as? Bool ?? true
     }
 
     /// UserDefaults notifications can arrive on any thread; hop to the actor.
