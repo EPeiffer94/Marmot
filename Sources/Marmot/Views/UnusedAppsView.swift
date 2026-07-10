@@ -28,8 +28,7 @@ struct UnusedAppsView: View {
     var body: some View {
         Group {
             if inventory.loading && inventory.apps.isEmpty {
-                ProgressView("Checking when each app was last opened…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                LoadingState(text: "Checking when each app was last opened…")
             } else if unused.isEmpty {
                 EmptyState(icon: "hourglass",
                            title: "No unused apps",

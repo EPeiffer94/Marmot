@@ -31,24 +31,8 @@ struct DashboardView: View {
     private var healthCard: some View {
         card {
             HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.primary.opacity(0.08), lineWidth: 9)
-                    Circle()
-                        .trim(from: 0, to: CGFloat(snap.healthScore) / 100)
-                        .stroke(snap.healthColor.gradient,
-                                style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    VStack(spacing: 0) {
-                        Text("\(snap.healthScore)")
-                            .font(.title.weight(.bold).monospacedDigit())
-                        Text("health")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(width: 92, height: 92)
-                .animation(.easeOut, value: snap.healthScore)
+                HealthRing(score: snap.healthScore, lineWidth: 9, caption: "health")
+                    .frame(width: 92, height: 92)
 
                 VStack(alignment: .leading, spacing: 8) {
                     miniMetric("cpu", "CPU", snap.cpu.totalUsage, .blue)
@@ -186,13 +170,6 @@ struct DashboardView: View {
         content()
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.primary.opacity(0.04))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(Color.primary.opacity(0.06))
-                    )
-            )
+            .cardStyle()
     }
 }

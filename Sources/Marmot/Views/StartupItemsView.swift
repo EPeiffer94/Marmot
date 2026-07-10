@@ -12,8 +12,7 @@ struct StartupItemsView: View {
     var body: some View {
         Group {
             if loading && items.isEmpty {
-                ProgressView("Reading startup items…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                LoadingState(text: "Reading startup items…")
             } else if loadedOnce && items.isEmpty {
                 EmptyState(icon: "power",
                            title: "Nothing starts automatically",

@@ -26,8 +26,7 @@ struct UninstallView: View {
     var body: some View {
         Group {
             if inventory.loading && inventory.apps.isEmpty {
-                ProgressView("Finding installed apps…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                LoadingState(text: "Finding installed apps…")
             } else {
                 appTable
             }
