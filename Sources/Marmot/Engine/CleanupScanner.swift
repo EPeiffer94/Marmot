@@ -173,9 +173,14 @@ enum CleanupScanner {
 
     /// Conservative orphan detection: reverse-DNS folders/plists whose bundle
     /// ID is not installed and not Apple's.
+    /// Precompiled once; the pattern is a constant so failure is impossible
+    /// in practice, but we degrade gracefully instead of force-trying.
+    static let bundleIDRegex = try? NSRegularExpression(
+        pattern: "^[A-Za-z0-9-]+\\.[A-Za-z0-9-]+\\.[A-Za-z0-9-.]+$")
+
     static func scanOrphans() -> [ChangeItem] {
         let installed = installedBundleIDs()
-        let bundleIDPattern = try! NSRegularExpression(pattern: "^[A-Za-z0-9-]+\\.[A-Za-z0-9-]+\\.[A-Za-z0-9-.]+$")
+        guard let bundleIDPattern = bundleIDRegex else { return [] }
 
         func looksLikeBundleID(_ name: String) -> Bool {
             let base = name.hasSuffix(".plist") ? String(name.dropLast(6)) : name

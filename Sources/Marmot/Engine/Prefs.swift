@@ -9,4 +9,6 @@ enum Prefs {
     static let purgePaths = "marmot.purgePaths"
     /// GB threshold for the menu bar junk alert; 0 = off.
     static let junkAlertGB = "marmot.junkAlertGB"
+    /// Unix timestamp of the last junk notification (24h debounce).
+    static let junkAlertNotifiedAt = "marmot.junkAlertNotifiedAt"
 }

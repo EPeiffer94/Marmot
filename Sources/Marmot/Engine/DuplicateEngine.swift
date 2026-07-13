@@ -34,7 +34,9 @@ final class DuplicateEngine {
     var onProgress: ((String) -> Void)?
 
     func scan(roots: [String]) -> [DuplicateGroup] {
-        var bySize: [Int64: [String]] = [:]
+        // Size → (path, device:inode). The file ID lets us skip hardlinked
+        // twins: removing one hardlink to the same file frees no space.
+        var bySize: [Int64: [(path: String, fileID: String)]] = [:]
         let fm = FileManager.default
 
         for root in roots {
@@ -60,14 +62,23 @@ final class DuplicateEngine {
                       values.isRegularFile == true,
                       let size = values.fileSize,
                       Int64(size) >= Self.minFileSize else { continue }
-                bySize[Int64(size), default: []].append(path)
+                var sb = stat()
+                guard lstat(path, &sb) == 0 else { continue }
+                bySize[Int64(size), default: []].append(
+                    (path: path, fileID: "\(sb.st_dev):\(sb.st_ino)"))
             }
         }
 
         // Hash all same-size candidates in parallel — this is the slow part.
-        let candidates: [(size: Int64, path: String)] = bySize
-            .filter { $0.value.count > 1 }
-            .flatMap { size, paths in paths.map { (size, $0) } }
+        // Within each size bucket, hardlinks to the same physical file are
+        // collapsed to one entry first.
+        var candidates: [(size: Int64, path: String)] = []
+        for (size, entries) in bySize where entries.count > 1 {
+            var seenIDs = Set<String>()
+            let unique = entries.filter { seenIDs.insert($0.fileID).inserted }
+            guard unique.count > 1 else { continue }
+            candidates.append(contentsOf: unique.map { (size, $0.path) })
+        }
         guard !candidates.isEmpty else { return [] }
 
         var keyed = [(key: String, file: DuplicateFile)?](repeating: nil, count: candidates.count)
