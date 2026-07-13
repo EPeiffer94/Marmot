@@ -1,0 +1,18 @@
+/*
+  Localizable.strings (English — development language)
+
+  Marmot's UI strings are written as literals in SwiftUI, which look up this
+  table automatically at runtime (key = the English literal). English needs no
+  entries because a missing key falls back to itself.
+
+  To add a language:
+  1. Copy this folder to <code>.lproj (e.g. de.lproj, fr.lproj, ja.lproj)
+  2. Add one line per string you translate:  "English text" = "Translation";
+  3. Build — the Makefile bundles every *.lproj folder automatically.
+
+  Example entries a German translation would start with:
+
+  "Scan My Mac" = "Meinen Mac scannen";
+  "Dry Run" = "Probelauf";
+  "Apply" = "Anwenden";
+*/

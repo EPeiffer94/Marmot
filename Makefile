@@ -24,6 +24,9 @@ bundle: build
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(BUILD_NUM)" $(CONTENTS)/Info.plist
 	@if [ ! -f Resources/AppIcon.icns ] && [ -f Resources/AppIcon.png ]; then sh scripts/make-icon.sh; fi
 	@if [ -f Resources/AppIcon.icns ]; then cp Resources/AppIcon.icns $(CONTENTS)/Resources/AppIcon.icns; fi
+	@for lproj in Resources/*.lproj; do \
+		if [ -d "$$lproj" ]; then cp -R "$$lproj" $(CONTENTS)/Resources/; fi \
+	done
 	codesign --force --deep --sign - $(BUNDLE)
 	@echo "Built $(BUNDLE) — move it to /Applications or run: open $(BUNDLE)"
 

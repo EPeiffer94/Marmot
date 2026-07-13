@@ -139,6 +139,8 @@ The one file to read first: `Engine/SafetyRules.swift` — the allow-list and pr
 
 Issues and PRs are very welcome! Good first contributions: new cleanup categories, more app-cache definitions, better orphan detection, localizations.
 
+**Translating Marmot** 🌍 — copy `Resources/en.lproj` to your language code (e.g. `Resources/de.lproj`), add `"English text" = "Translation";` lines to `Localizable.strings`, and build. The instructions inside the file walk you through it.
+
 ## 📜 License
 
 MIT — free forever, no upsells, no license keys. 🎁
