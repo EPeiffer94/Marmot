@@ -24,9 +24,12 @@ struct MenuBarHUD: View {
 
             Divider()
 
-            row("cpu", "CPU", String(format: "%.0f%%", snap.cpu.totalUsage), snap.cpu.totalUsage, .blue)
-            row("memorychip", "Memory", String(format: "%.0f%%", snap.memory.usedPercent), snap.memory.usedPercent, .teal)
-            row("internaldrive", "Disk", "\(ByteFormat.string(snap.disk.freeBytes)) free", snap.disk.usedPercent, .orange)
+            // Grouped to stay well under ViewBuilder's 10-child limit.
+            Group {
+                row("cpu", "CPU", String(format: "%.0f%%", snap.cpu.totalUsage), snap.cpu.totalUsage, .blue)
+                row("memorychip", "Memory", String(format: "%.0f%%", snap.memory.usedPercent), snap.memory.usedPercent, .teal)
+                row("internaldrive", "Disk", "\(ByteFormat.string(snap.disk.freeBytes)) free", snap.disk.usedPercent, .orange)
+            }
 
             HStack(spacing: 10) {
                 Label(ByteFormat.rate(snap.network.downPerSec), systemImage: "arrow.down")
