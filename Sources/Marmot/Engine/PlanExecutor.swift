@@ -69,7 +69,8 @@ final class PlanExecutor {
             if item.action == .moveToTrash {
                 var trashed: NSURL?
                 try FileManager.default.trashItem(at: url, resultingItemURL: &trashed)
-                return ItemResult(item: item, outcome: .done, detail: "Moved to Trash.")
+                return ItemResult(item: item, outcome: .done, detail: "Moved to Trash.",
+                                  trashedTo: trashed?.path)
             } else {
                 try FileManager.default.removeItem(at: url)
                 return ItemResult(item: item, outcome: .done, detail: "Deleted.")

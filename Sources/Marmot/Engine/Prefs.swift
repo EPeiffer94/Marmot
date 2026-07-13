@@ -7,4 +7,6 @@ enum Prefs {
     static let onboarded = "marmot.onboarded"
     static let whitelist = "marmot.whitelist"
     static let purgePaths = "marmot.purgePaths"
+    /// GB threshold for the menu bar junk alert; 0 = off.
+    static let junkAlertGB = "marmot.junkAlertGB"
 }

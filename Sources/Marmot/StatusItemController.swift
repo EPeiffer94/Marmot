@@ -14,6 +14,9 @@ final class StatusItemController: NSObject {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
     private var cancellables = Set<AnyCancellable>()
+    private var latestCPU = 0
+    private var junkAlerted = false
+    private var backgroundScanTimer: Timer?
 
     override init() {
         super.init()
@@ -36,10 +39,41 @@ final class StatusItemController: NSObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] cpu in
                 Task { @MainActor [weak self] in
-                    self?.statusItem?.button?.title = " \(cpu)%"
+                    self?.latestCPU = cpu
+                    self?.refreshTitle()
                 }
             }
             .store(in: &cancellables)
+
+        // Junk alert: watch the cleanup model's total against the threshold.
+        CleanupModel.shared.$categories
+            .map { $0.reduce(Int64(0)) { $0 + $1.size } }
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] total in
+                Task { @MainActor [weak self] in
+                    self?.updateJunkAlert(total: total)
+                }
+            }
+            .store(in: &cancellables)
+
+        // Quiet background rescan every 4 hours — only when alerts are on.
+        backgroundScanTimer = Timer.scheduledTimer(withTimeInterval: 4 * 3600, repeats: true) { _ in
+            Task { @MainActor in
+                guard UserDefaults.standard.integer(forKey: Prefs.junkAlertGB) > 0 else { return }
+                CleanupModel.shared.rescan()
+            }
+        }
+    }
+
+    private func updateJunkAlert(total: Int64) {
+        let thresholdGB = UserDefaults.standard.integer(forKey: Prefs.junkAlertGB)
+        junkAlerted = thresholdGB > 0 && total > Int64(thresholdGB) * 1_000_000_000
+        refreshTitle()
+    }
+
+    private func refreshTitle() {
+        statusItem?.button?.title = " \(latestCPU)%" + (junkAlerted ? " ⚠︎" : "")
     }
 
     private var hudEnabled: Bool {
