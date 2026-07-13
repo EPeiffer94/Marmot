@@ -9,7 +9,9 @@ struct DashboardView: View {
     @EnvironmentObject var stats: StatsSampler
     @ObservedObject private var cleanup = CleanupModel.shared
     @ObservedObject private var trends = TrendStore.shared
+    @ObservedObject private var inventory = AppInventory.shared
     @State private var freedStats: FreedStats?
+    @State private var suggestions: [Suggestion] = []
     var onNavigate: (SidebarSection) -> Void
 
     var snap: SystemSnapshot { stats.snapshot }
@@ -22,6 +24,9 @@ struct DashboardView: View {
                     reclaimableCard
                 }
                 .frame(height: 200)
+                if !suggestions.isEmpty {
+                    suggestionsCard
+                }
                 if let stats = freedStats, !stats.isEmpty {
                     reportCard(stats)
                 }
@@ -33,11 +38,58 @@ struct DashboardView: View {
             .padding()
         }
         .onAppear {
+            inventory.loadIfNeeded()
             Task { @MainActor in
                 freedStats = await Task.detached { OperationLog.shared.freedStats() }.value
             }
+            refreshSuggestions()
         }
+        .onChange(of: cleanup.lastScan) { _ in refreshSuggestions() }
         .navigationSubtitle("Welcome to Marmot")
+    }
+
+    private func refreshSuggestions() {
+        let categories = cleanup.categories
+        let apps = inventory.apps
+        let free = snap.disk.freeBytes
+        let total = snap.disk.totalBytes
+        Task { @MainActor in
+            suggestions = await Task.detached(priority: .utility) {
+                SuggestionEngine.compute(categories: categories, apps: apps,
+                                         diskFree: free, diskTotal: total)
+            }.value
+        }
+    }
+
+    // MARK: Suggestions
+
+    private var suggestionsCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Suggestions", systemImage: "lightbulb")
+                    .font(.headline)
+                ForEach(suggestions) { suggestion in
+                    Button {
+                        onNavigate(suggestion.target)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: suggestion.icon)
+                                .foregroundStyle(.tint)
+                                .frame(width: 20)
+                            Text(suggestion.text)
+                                .font(.callout)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: Report card

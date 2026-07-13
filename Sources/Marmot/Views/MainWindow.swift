@@ -54,6 +54,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 
 struct MainWindow: View {
     @State private var selection: SidebarSection? = .dashboard
+    @State private var showPalette = false
     @EnvironmentObject var stats: StatsSampler
     @AppStorage(Prefs.onboarded) private var onboarded = false
 
@@ -84,12 +85,47 @@ struct MainWindow: View {
             }
         }
         .navigationTitle("Marmot")
+        .background(
+            // Hidden trigger so ⌘K works from anywhere in the window.
+            Button("") { showPalette = true }
+                .keyboardShortcut("k", modifiers: .command)
+                .hidden()
+        )
+        .overlay {
+            if showPalette {
+                CommandPaletteView(items: paletteItems) { showPalette = false }
+            }
+        }
         .sheet(isPresented: Binding(
             get: { !onboarded },
             set: { if !$0 { onboarded = true } }
         )) {
             OnboardingView { onboarded = true }
         }
+    }
+
+    private var paletteItems: [PaletteItem] {
+        var items = SidebarSection.allCases.map { section in
+            PaletteItem(title: section.rawValue, subtitle: section.blurb,
+                        icon: section.icon) { selection = section }
+        }
+        items.append(PaletteItem(
+            title: "Smart Scan",
+            subtitle: "Scan all cleanup categories now",
+            icon: "wand.and.stars") {
+                selection = .cleanup
+                CleanupModel.shared.rescan()
+            })
+        for rule in Autopilot.shared.rules where rule.isEnabled {
+            items.append(PaletteItem(
+                title: "Run rule: \(rule.name)",
+                subtitle: "Autopilot — \(rule.frequency.rawValue)",
+                icon: "clock.badge.checkmark") {
+                    selection = .autopilot
+                    Autopilot.shared.run(rule)
+                })
+        }
+        return items
     }
 
     private var sidebarFooter: some View {
