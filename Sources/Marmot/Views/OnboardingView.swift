@@ -88,7 +88,9 @@ struct OnboardingView: View {
              message: "Every action produces a Change Plan you can review item by item. Use Dry Run to simulate the whole thing — nothing on disk is touched — and files go to the Trash so they stay recoverable."),
         Page(icon: "lock.shield",
              title: "One permission worth granting",
-             message: "Full Disk Access lets Marmot's scanners see protected areas like Mail data and other apps' containers. Without it nothing breaks — those spots are just skipped. Add Marmot to the list, then relaunch.")
+             message: "Full Disk Access lets Marmot's scanners see protected areas like Mail data "
+                + "and other apps' containers. Without it nothing breaks — those spots are just "
+                + "skipped. Add Marmot to the list, then relaunch.")
     ]
 
     private func openFullDiskAccessSettings() {

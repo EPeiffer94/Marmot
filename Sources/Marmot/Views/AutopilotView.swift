@@ -13,7 +13,10 @@ struct AutopilotView: View {
             if autopilot.rules.isEmpty {
                 StartScreen(icon: "clock.badge.checkmark",
                             title: "Autopilot",
-                            message: "Write cleaning rules once — \"clear browser caches weekly\", \"empty developer junk monthly\" — and Marmot runs them on schedule. Runs are trash-first, logged in History, and announced with a notification. Build artifacts and orphaned data stay manual-only.",
+                            message: "Write cleaning rules once — \"clear browser caches weekly\", "
+                                + "\"empty developer junk monthly\" — and Marmot runs them on schedule. "
+                                + "Runs are trash-first, logged in History, and announced with a "
+                                + "notification. Build artifacts and orphaned data stay manual-only.",
                             buttonLabel: "Create First Rule") {
                     showingNewRule = true
                 }
