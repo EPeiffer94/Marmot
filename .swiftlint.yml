@@ -6,6 +6,11 @@ disabled_rules:
   - trailing_comma
   - todo
   - opening_brace # SwiftUI-style trailing closures trip this
+  # Removing `= nil` changes memberwise-init defaults and breaks call sites.
+  - implicit_optional_initialization
+  # "whitelist" is the established user-facing term here, and the stored
+  # preference key must stay stable for existing users.
+  - inclusive_language
 
 line_length:
   warning: 160
@@ -34,3 +39,8 @@ identifier_name:
 
 nesting:
   type_level: 3
+
+# 3-member tuples (load averages, IO counters) are idiomatic in the samplers.
+large_tuple:
+  warning: 3
+  error: 4

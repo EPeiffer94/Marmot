@@ -85,8 +85,11 @@ struct CleanupView: View {
             Toggle("", isOn: Binding(
                 get: { selectedCategoryIDs.contains(category.id) },
                 set: { on in
-                    if on { selectedCategoryIDs.insert(category.id) }
-                    else { selectedCategoryIDs.remove(category.id) }
+                    if on {
+                        selectedCategoryIDs.insert(category.id)
+                    } else {
+                        selectedCategoryIDs.remove(category.id)
+                    }
                 }
             ))
             .toggleStyle(.checkbox)

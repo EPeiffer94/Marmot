@@ -59,15 +59,16 @@ struct DuplicatesView: View {
                         + "in Downloads, Documents, and Desktop. You choose which copy to keep — "
                         + "removals are trash-first and previewed like everything else.",
                     buttonLabel: "Scan for Duplicates",
-                    action: { startScan() }) {
-            VStack(spacing: 4) {
-                ForEach(roots, id: \.self) { root in
-                    Text(root)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.tertiary)
-                }
-            }
-        }
+                    action: { startScan() },
+                    extra: {
+                        VStack(spacing: 4) {
+                            ForEach(roots, id: \.self) { root in
+                                Text(root)
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    })
     }
 
     private var scanningState: some View {
@@ -107,8 +108,11 @@ struct DuplicatesView: View {
             Toggle("", isOn: Binding(
                 get: { includedGroups.contains(group.id) },
                 set: { on in
-                    if on { includedGroups.insert(group.id) }
-                    else { includedGroups.remove(group.id) }
+                    if on {
+                        includedGroups.insert(group.id)
+                    } else {
+                        includedGroups.remove(group.id)
+                    }
                 }
             ))
             .toggleStyle(.checkbox)

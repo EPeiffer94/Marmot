@@ -59,14 +59,15 @@ struct DiskMapView: View {
                     title: "Disk Map",
                     message: "Visualizes where your disk space goes as an interactive treemap. Click a block to zoom in, right-click to reveal or remove. Removal always goes through the change preview.",
                     buttonLabel: "Scan Home Folder",
-                    action: { scanTarget = NSHomeDirectory(); startScan() }) {
-            Button {
-                pickFolder()
-            } label: {
-                Label("Choose Folder…", systemImage: "folder")
-            }
-            .controlSize(.large)
-        }
+                    action: { scanTarget = NSHomeDirectory(); startScan() },
+                    extra: {
+                        Button {
+                            pickFolder()
+                        } label: {
+                            Label("Choose Folder…", systemImage: "folder")
+                        }
+                        .controlSize(.large)
+                    })
     }
 
     private var scanningState: some View {
