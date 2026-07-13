@@ -79,24 +79,14 @@ final class StatusItemController: NSObject {
 
     /// Posts a real notification on the rising edge, at most once per day.
     private func maybeNotify(total: Int64) {
-        // UserNotifications requires a bundled app (crashes under `swift run`).
-        guard Bundle.main.bundleIdentifier != nil,
-              Bundle.main.bundlePath.hasSuffix(".app") else { return }
         let last = UserDefaults.standard.double(forKey: Prefs.junkAlertNotifiedAt)
         let now = Date().timeIntervalSince1970
         guard now - last > 24 * 3600 else { return }
         UserDefaults.standard.set(now, forKey: Prefs.junkAlertNotifiedAt)
 
-        let center = UNUserNotificationCenter.current()
-        let amount = ByteFormat.string(total)
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
-            let content = UNMutableNotificationContent()
-            content.title = "Marmot found reclaimable junk"
-            content.body = "\(amount) can be reviewed and cleaned. Nothing is removed without your approval."
-            center.add(UNNotificationRequest(identifier: "marmot.junkAlert",
-                                             content: content, trigger: nil))
-        }
+        Notifier.post(title: "Marmot found reclaimable junk",
+                      body: "\(ByteFormat.string(total)) can be reviewed and cleaned. Nothing is removed without your approval.",
+                      identifier: "marmot.junkAlert")
     }
 
     private func refreshTitle() {

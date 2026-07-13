@@ -105,6 +105,13 @@ enum MaintenanceCatalog {
                 risk: .low,
                 requiredBinary: "/usr/sbin/purge"),
             MaintenanceTask(
+                id: "tmsnapshots", name: "Thin Time Machine Snapshots", icon: "clock.arrow.2.circlepath",
+                explanation: "macOS keeps hourly local Time Machine snapshots that can silently hold tens of gigabytes. Thinning asks the system to purge them.",
+                effect: "Local snapshots are removed and rebuilt over time. External Time Machine backups are not touched.",
+                commands: [.init(text: "/usr/bin/tmutil thinlocalsnapshots / 9999999999999 4", needsAdmin: true)],
+                risk: .medium,
+                requiredBinary: "/usr/bin/tmutil"),
+            MaintenanceTask(
                 id: "maintenance", name: "Run Periodic Scripts", icon: "clock.arrow.circlepath",
                 explanation: "Runs the traditional daily/weekly/monthly system maintenance scripts.",
                 effect: "Rotates logs and cleans temporary system files.",
