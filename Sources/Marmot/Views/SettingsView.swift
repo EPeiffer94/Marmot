@@ -40,6 +40,18 @@ struct SettingsView: View {
             Text("Marmot never removes anything without showing you the full change plan first. Files go to the Trash by default so they stay recoverable.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Divider()
+            HStack {
+                Button("Check for Updates…") {
+                    UpdaterBridge.shared.checkForUpdates()
+                }
+                .disabled(!UpdaterBridge.shared.isActive)
+                if !UpdaterBridge.shared.isActive {
+                    Text("Updates unavailable in this build.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
         }
         .padding()
     }

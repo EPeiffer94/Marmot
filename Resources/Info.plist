@@ -28,6 +28,12 @@
     <string>MIT License. Open source and free.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/EPeiffer94/Marmot/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>PASTE_YOUR_PUBLIC_ED_KEY_HERE</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>Marmot uses administrator privileges only when you approve a maintenance task that requires them.</string>
     <key>NSSupportsAutomaticTermination</key>
