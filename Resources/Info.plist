@@ -31,7 +31,7 @@
     <key>SUFeedURL</key>
     <string>https://raw.githubusercontent.com/EPeiffer94/Marmot/main/appcast.xml</string>
     <key>SUPublicEDKey</key>
-    <string>PASTE_YOUR_PUBLIC_ED_KEY_HERE</string>
+    <string>/WJd11E+6F3OJHOZDtkzBhBpUeYOmdjXiDce49d/juM=</string>
     <key>SUEnableAutomaticChecks</key>
     <true/>
     <key>NSAppleEventsUsageDescription</key>
