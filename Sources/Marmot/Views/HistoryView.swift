@@ -30,7 +30,7 @@ struct HistoryView: View {
                     .font(.callout)
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.quaternary.opacity(0.4))
+                    .background(Color.secondary.opacity(0.12))
             }
             if filtered.isEmpty {
                 EmptyState(icon: "clock.arrow.circlepath",
