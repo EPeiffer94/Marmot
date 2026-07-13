@@ -9,3 +9,7 @@ DerivedData/
 
 # macOS
 .DS_Store
+
+# Release artifacts
+*.zip
+AppIcon.iconset/
