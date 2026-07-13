@@ -6,6 +6,8 @@ struct HistoryView: View {
 
     @State private var entries: [LogEntry] = []
     @State private var filter: Filter = .all
+    @State private var message: String?
+    @State private var restoredIDs: Set<UUID> = []
 
     enum Filter: String, CaseIterable {
         case all = "All"
@@ -22,7 +24,14 @@ struct HistoryView: View {
     }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            if let message {
+                Label(message, systemImage: "arrow.uturn.backward.circle")
+                    .font(.callout)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.quaternary.opacity(0.4))
+            }
             if filtered.isEmpty {
                 EmptyState(icon: "clock.arrow.circlepath",
                            title: "No history yet",
@@ -63,6 +72,14 @@ struct HistoryView: View {
                             .foregroundStyle(entry.outcome.hasPrefix("Failed") ? .red : .secondary)
                     }
                     .width(160)
+                    TableColumn("") { entry in
+                        if isRestorable(entry) {
+                            Button("Restore") { restore(entry) }
+                                .controlSize(.small)
+                                .help("Moves the item from the Trash back to its original location.")
+                        }
+                    }
+                    .width(70)
                 }
             }
         }
@@ -83,5 +100,38 @@ struct HistoryView: View {
         }
         .onAppear { entries = OperationLog.shared.readAll() }
         .navigationSubtitle("\(entries.count) recorded operations")
+    }
+
+    // MARK: Restore
+
+    private func isRestorable(_ entry: LogEntry) -> Bool {
+        entry.trashedTo != nil
+            && !entry.dryRun
+            && entry.outcome == ItemOutcome.done.rawValue
+            && entry.action == ChangeAction.moveToTrash.rawValue
+            && !restoredIDs.contains(entry.id)
+    }
+
+    private func restore(_ entry: LogEntry) {
+        guard let from = entry.trashedTo else { return }
+        let fm = FileManager.default
+        let name = (entry.target as NSString).lastPathComponent
+        guard fm.fileExists(atPath: from) else {
+            message = "\(name) is no longer in the Trash — it may have been emptied."
+            return
+        }
+        guard !fm.fileExists(atPath: entry.target) else {
+            message = "Something already exists at the original location of \(name)."
+            return
+        }
+        do {
+            try fm.createDirectory(atPath: (entry.target as NSString).deletingLastPathComponent,
+                                   withIntermediateDirectories: true)
+            try fm.moveItem(atPath: from, toPath: entry.target)
+            restoredIDs.insert(entry.id)
+            message = "Restored \(name) to its original location."
+        } catch {
+            message = "Restore failed: \(error.localizedDescription)"
+        }
     }
 }

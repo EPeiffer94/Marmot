@@ -106,12 +106,15 @@ struct ItemResult: Identifiable, Codable, Sendable {
     let item: ChangeItem
     let outcome: ItemOutcome
     let detail: String
+    /// Where the item landed in the Trash — enables Restore from History.
+    let trashedTo: String?
 
-    init(item: ChangeItem, outcome: ItemOutcome, detail: String = "") {
+    init(item: ChangeItem, outcome: ItemOutcome, detail: String = "", trashedTo: String? = nil) {
         self.id = UUID()
         self.item = item
         self.outcome = outcome
         self.detail = detail
+        self.trashedTo = trashedTo
     }
 }
 

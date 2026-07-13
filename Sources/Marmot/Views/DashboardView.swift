@@ -7,6 +7,7 @@ struct DashboardView: View {
 
     @EnvironmentObject var stats: StatsSampler
     @ObservedObject private var cleanup = CleanupModel.shared
+    @State private var freedStats: FreedStats?
     var onNavigate: (SidebarSection) -> Void
 
     var snap: SystemSnapshot { stats.snapshot }
@@ -19,11 +20,59 @@ struct DashboardView: View {
                     reclaimableCard
                 }
                 .frame(height: 200)
+                if let stats = freedStats, !stats.isEmpty {
+                    reportCard(stats)
+                }
                 moduleGrid
             }
             .padding()
         }
+        .onAppear {
+            Task { @MainActor in
+                freedStats = await Task.detached { OperationLog.shared.freedStats() }.value
+            }
+        }
         .navigationSubtitle("Welcome to Marmot")
+    }
+
+    // MARK: Report card
+
+    private func reportCard(_ stats: FreedStats) -> some View {
+        card {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Report Card", systemImage: "chart.bar.doc.horizontal")
+                    .font(.headline)
+                HStack(spacing: 28) {
+                    reportStat("This week", stats.last7Days)
+                    reportStat("Last 30 days", stats.last30Days)
+                    reportStat("All time", stats.allTime)
+                    if let best = stats.biggestRecent {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Biggest recent win")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                            Text("\((best.target as NSString).lastPathComponent) — \(ByteFormat.string(best.sizeBytes))")
+                                .font(.callout.weight(.medium))
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .onTapGesture { onNavigate(.history) }
+    }
+
+    private func reportStat(_ label: String, _ bytes: Int64) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            Text(ByteFormat.string(bytes) + " freed")
+                .font(.callout.weight(.semibold).monospacedDigit())
+        }
     }
 
     // MARK: Health

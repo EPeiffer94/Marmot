@@ -5,6 +5,7 @@ import AppKit
 struct MenuBarHUD: View {
 
     @EnvironmentObject var stats: StatsSampler
+    @ObservedObject private var cleanup = CleanupModel.shared
 
     var snap: SystemSnapshot { stats.snapshot }
 
@@ -40,6 +41,18 @@ struct MenuBarHUD: View {
                           systemImage: snap.battery.isCharging ? "battery.100percent.bolt" : "battery.75percent")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            if cleanup.scannedOnce {
+                Divider()
+                HStack {
+                    Label("Reclaimable junk", systemImage: "sparkles")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(ByteFormat.string(cleanup.totalFound))
+                        .font(.caption.weight(.semibold).monospacedDigit())
                 }
             }
 

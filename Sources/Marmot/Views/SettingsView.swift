@@ -21,10 +21,22 @@ struct SettingsView: View {
         .frame(width: 520, height: 380)
     }
 
+    @AppStorage(Prefs.junkAlertGB) private var junkAlertGB = 0
+
     private var generalTab: some View {
         Form {
             Toggle("Show menu bar HUD", isOn: $hudEnabled)
             Toggle("Suggest dry run before applying", isOn: $defaultDryRun)
+            Picker("Junk alert in menu bar", selection: $junkAlertGB) {
+                Text("Off").tag(0)
+                Text("Over 5 GB").tag(5)
+                Text("Over 10 GB").tag(10)
+                Text("Over 25 GB").tag(25)
+                Text("Over 50 GB").tag(50)
+            }
+            Text("With the alert on, Marmot quietly rescans every few hours and shows ⚠︎ next to the menu bar reading when reclaimable junk crosses the threshold.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Text("Marmot never removes anything without showing you the full change plan first. Files go to the Trash by default so they stay recoverable.")
                 .font(.caption)
                 .foregroundStyle(.secondary)

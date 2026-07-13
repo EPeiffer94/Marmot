@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// The heart of Marmot: every destructive operation passes through this sheet.
 /// It shows exactly what will change, lets the user deselect items, run a
@@ -164,6 +165,21 @@ struct PlanPreviewView: View {
         }
         .padding(.vertical, 2)
         .opacity(item.isSelected ? 1 : 0.45)
+        .contextMenu {
+            if item.action == .moveToTrash || item.action == .deletePermanently {
+                Button("Reveal in Finder") {
+                    NSWorkspace.shared.selectFile(item.target, inFileViewerRootedAtPath: "")
+                }
+                Button("Never Touch This (Add to Protected Paths)") {
+                    var list = SafetyRules.whitelist
+                    if !list.contains(item.target) {
+                        list.append(item.target)
+                        SafetyRules.whitelist = list
+                    }
+                    plan.items[index].isSelected = false
+                }
+            }
+        }
     }
 
     private func iconName(for item: ChangeItem) -> String {
