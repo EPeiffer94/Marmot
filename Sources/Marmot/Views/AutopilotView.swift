@@ -35,7 +35,8 @@ struct AutopilotView: View {
             }
         }
         .sheet(isPresented: $showingNewRule) {
-            RuleEditor(rule: AutopilotRule(name: "", categoryIDs: [], frequency: .weekly)) { rule in
+            RuleEditor(rule: AutopilotRule(name: "", categoryIDs: [], frequency: .weekly,
+                                           createdAt: Date())) { rule in
                 autopilot.rules.append(rule)
             }
         }

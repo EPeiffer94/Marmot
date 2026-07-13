@@ -22,9 +22,16 @@ struct AutopilotRule: Identifiable, Codable {
     var isEnabled = true
     var lastRun: Date? = nil
     var lastFreedBytes: Int64 = 0
+    /// Optional for backward-compatible decoding of rules saved before this
+    /// field existed.
+    var createdAt: Date? = nil
 
+    /// A rule's first scheduled run is one full interval after creation —
+    /// never immediately, so authoring a rule is never itself destructive.
+    /// Use "Run Now" for an immediate run.
     var isDue: Bool {
-        isEnabled && (lastRun ?? .distantPast).addingTimeInterval(frequency.interval) < Date()
+        let reference = lastRun ?? createdAt ?? .distantPast
+        return isEnabled && reference.addingTimeInterval(frequency.interval) < Date()
     }
 }
 
