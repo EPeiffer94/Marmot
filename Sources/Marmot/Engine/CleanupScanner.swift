@@ -133,24 +133,27 @@ enum CleanupScanner {
     }
 
     static func scanDeveloper() -> [ChangeItem] {
-        let entries: [(String, String, RiskLevel, Bool)] = [
-            (home + "/Library/Developer/Xcode/DerivedData", "Xcode DerivedData — rebuilt on next build.", .low, true),
-            (home + "/Library/Developer/CoreSimulator/Caches", "Simulator caches.", .low, true),
-            (home + "/Library/Developer/Xcode/iOS DeviceSupport", "Debug symbols for old iOS versions. Re-downloaded when a device connects.", .medium, false),
-            (home + "/Library/Caches/com.apple.dt.Xcode", "Xcode download cache.", .low, true),
-            (home + "/.npm/_cacache", "npm cache.", .low, true),
-            (home + "/.yarn/cache", "Yarn cache.", .low, true),
-            (home + "/Library/pnpm/store", "pnpm content-addressable store.", .low, true),
-            (home + "/Library/Caches/CocoaPods", "CocoaPods cache.", .low, true),
-            (home + "/.gradle/caches", "Gradle build cache.", .low, true),
-            (home + "/Library/Caches/pip", "pip download cache.", .low, true),
-            (home + "/.cargo/registry/cache", "Cargo crate cache.", .low, true),
-            (home + "/Library/Caches/Homebrew", "Homebrew downloads. `brew` re-fetches as needed.", .low, true),
-            (home + "/Library/Caches/go-build", "Go build cache.", .low, true)
-        ]
-        let specs = entries.map { path, note, risk, selected in
-            Spec(path: path, group: "Developer", risk: risk, note: note, selected: selected)
+        func dev(_ path: String, _ note: String,
+                 risk: RiskLevel = .low, selected: Bool = true) -> Spec {
+            Spec(path: home + path, group: "Developer", risk: risk, note: note, selected: selected)
         }
+        let specs = [
+            dev("/Library/Developer/Xcode/DerivedData", "Xcode DerivedData — rebuilt on next build."),
+            dev("/Library/Developer/CoreSimulator/Caches", "Simulator caches."),
+            dev("/Library/Developer/Xcode/iOS DeviceSupport",
+                "Debug symbols for old iOS versions. Re-downloaded when a device connects.",
+                risk: .medium, selected: false),
+            dev("/Library/Caches/com.apple.dt.Xcode", "Xcode download cache."),
+            dev("/.npm/_cacache", "npm cache."),
+            dev("/.yarn/cache", "Yarn cache."),
+            dev("/Library/pnpm/store", "pnpm content-addressable store."),
+            dev("/Library/Caches/CocoaPods", "CocoaPods cache."),
+            dev("/.gradle/caches", "Gradle build cache."),
+            dev("/Library/Caches/pip", "pip download cache."),
+            dev("/.cargo/registry/cache", "Cargo crate cache."),
+            dev("/Library/Caches/Homebrew", "Homebrew downloads. `brew` re-fetches as needed."),
+            dev("/Library/Caches/go-build", "Go build cache.")
+        ]
         return buildItems(specs, minSize: 1024 * 1024)
     }
 

@@ -147,8 +147,11 @@ struct RuleEditor: View {
                         Toggle(isOn: Binding(
                             get: { rule.categoryIDs.contains(category.id) },
                             set: { on in
-                                if on { rule.categoryIDs.append(category.id) }
-                                else { rule.categoryIDs.removeAll { $0 == category.id } }
+                                if on {
+                                    rule.categoryIDs.append(category.id)
+                                } else {
+                                    rule.categoryIDs.removeAll { $0 == category.id }
+                                }
                             }
                         )) {
                             HStack(spacing: 6) {

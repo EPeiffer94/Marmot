@@ -154,8 +154,11 @@ struct Sparkline: View {
                 for (i, v) in values.enumerated() {
                     let x = CGFloat(i) * stepX
                     let y = geo.size.height * (1 - CGFloat(v / maxValue))
-                    if i == 0 { path.move(to: CGPoint(x: x, y: y)) }
-                    else { path.addLine(to: CGPoint(x: x, y: y)) }
+                    if i == 0 {
+                        path.move(to: CGPoint(x: x, y: y))
+                    } else {
+                        path.addLine(to: CGPoint(x: x, y: y))
+                    }
                 }
             }
             .stroke(color.gradient, lineWidth: 1.5)

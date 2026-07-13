@@ -43,15 +43,21 @@ enum UpdateChecker {
         struct BrewJSON: Decodable {
             struct Cask: Decodable {
                 let name: String
-                let installed_versions: [String]?
-                let current_version: String?
+                let installedVersions: [String]?
+                let currentVersion: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case name
+                    case installedVersions = "installed_versions"
+                    case currentVersion = "current_version"
+                }
             }
             let casks: [Cask]
         }
         guard let parsed = try? JSONDecoder().decode(BrewJSON.self, from: data) else { return [] }
         return parsed.casks.compactMap { cask in
-            let latest = cask.current_version ?? "?"
-            let installed = cask.installed_versions?.first ?? "?"
+            let latest = cask.currentVersion ?? "?"
+            let installed = cask.installedVersions?.first ?? "?"
             guard latest != installed, latest != "latest" else { return nil }
             return AppUpdate(id: "brew:" + cask.name,
                              appName: cask.name.replacingOccurrences(of: "-", with: " ").capitalized,
