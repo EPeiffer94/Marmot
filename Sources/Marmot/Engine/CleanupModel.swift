@@ -58,6 +58,9 @@ final class CleanupModel: ObservableObject {
             self.scanning = false
             self.lastScan = Date()
             self.saveCache()
+            TrendStore.shared.record(
+                junkTotal: self.totalFound,
+                categorySizes: Dictionary(uniqueKeysWithValues: self.categories.map { ($0.id, $0.size) }))
         }
     }
 

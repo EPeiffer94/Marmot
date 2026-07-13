@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 /// Home screen: system health at a glance, reclaimable space from the shared
 /// cleanup model (instant thanks to the persisted cache), and shortcuts into
@@ -7,6 +8,7 @@ struct DashboardView: View {
 
     @EnvironmentObject var stats: StatsSampler
     @ObservedObject private var cleanup = CleanupModel.shared
+    @ObservedObject private var trends = TrendStore.shared
     @State private var freedStats: FreedStats?
     var onNavigate: (SidebarSection) -> Void
 
@@ -22,6 +24,9 @@ struct DashboardView: View {
                 .frame(height: 200)
                 if let stats = freedStats, !stats.isEmpty {
                     reportCard(stats)
+                }
+                if trends.points.count >= 2 {
+                    trendsCard
                 }
                 moduleGrid
             }
@@ -176,6 +181,68 @@ struct DashboardView: View {
             .sorted { $0.size > $1.size }
             .enumerated()
             .map { GroupShare(name: $1.name, bytes: $1.size, color: Palette.color(for: $0)) }
+    }
+
+    // MARK: Trends
+
+    private var trendsCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Storage Trends", systemImage: "chart.xyaxis.line")
+                    .font(.headline)
+
+                Chart {
+                    ForEach(trends.points) { point in
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("GB", Double(point.diskUsed) / 1_000_000_000),
+                            series: .value("Metric", "Disk used")
+                        )
+                        .foregroundStyle(.blue)
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("GB", Double(point.junkTotal) / 1_000_000_000),
+                            series: .value("Metric", "Reclaimable junk")
+                        )
+                        .foregroundStyle(.orange)
+                    }
+                }
+                .frame(height: 110)
+
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Circle().fill(.blue).frame(width: 7, height: 7)
+                        Text("Disk used (GB)").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: 4) {
+                        Circle().fill(.orange).frame(width: 7, height: 7)
+                        Text("Reclaimable junk (GB)").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+
+                let movers = trends.movers()
+                if !movers.isEmpty {
+                    HStack(spacing: 16) {
+                        Text("Since last scan:")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        ForEach(movers, id: \.name) { mover in
+                            HStack(spacing: 3) {
+                                Image(systemName: mover.delta > 0 ? "arrow.up.right" : "arrow.down.right")
+                                    .font(.caption2)
+                                    .foregroundStyle(mover.delta > 0 ? .orange : .green)
+                                Text("\(mover.name) \(mover.delta > 0 ? "+" : "−")\(ByteFormat.string(abs(mover.delta)))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: Module shortcuts
