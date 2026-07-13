@@ -55,7 +55,9 @@ struct DuplicatesView: View {
     private var startState: some View {
         StartScreen(icon: "doc.on.doc",
                     title: "Duplicate Finder",
-                    message: "Finds files with identical content (verified by hash, not just name) in Downloads, Documents, and Desktop. You choose which copy to keep — removals are trash-first and previewed like everything else.",
+                    message: "Finds files with identical content (verified by hash, not just name) "
+                        + "in Downloads, Documents, and Desktop. You choose which copy to keep — "
+                        + "removals are trash-first and previewed like everything else.",
                     buttonLabel: "Scan for Duplicates",
                     action: { startScan() }) {
             VStack(spacing: 4) {

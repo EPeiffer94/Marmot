@@ -56,7 +56,9 @@ struct CleanupView: View {
     private var startState: some View {
         StartScreen(icon: "sparkles",
                     title: "Deep Cleanup",
-                    message: "Scans caches, logs, browser data, developer junk, orphaned app data, installers, build artifacts, and Trash. Nothing is removed without your review — every change is shown first, and you can dry-run it.",
+                    message: "Scans caches, logs, browser data, developer junk, orphaned app data, "
+                        + "installers, build artifacts, and Trash. Nothing is removed without your "
+                        + "review — every change is shown first, and you can dry-run it.",
                     buttonLabel: "Scan My Mac") {
             model.rescan()
         }
