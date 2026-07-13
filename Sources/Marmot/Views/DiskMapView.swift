@@ -15,6 +15,7 @@ struct DiskMapView: View {
     @State private var showLargeFiles = false
     @State private var scanner: DiskScanner?
     @State private var hoveredNode: FileNode?
+    @State private var folderMovers: FolderTrends.Movers?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,6 +24,10 @@ struct DiskMapView: View {
             } else if let node = currentNode {
                 breadcrumb(node)
                 Divider()
+                if let movers = folderMovers, node.id == rootNode?.id {
+                    moversStrip(movers)
+                    Divider()
+                }
                 if showLargeFiles {
                     largeFileList
                 } else {
@@ -105,6 +110,28 @@ struct DiskMapView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    /// "What grew" since the previous scan of this root.
+    private func moversStrip(_ movers: FolderTrends.Movers) -> some View {
+        HStack(spacing: 14) {
+            Text("Since \(movers.since.formatted(date: .abbreviated, time: .omitted)):")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            ForEach(movers.changes, id: \.name) { change in
+                HStack(spacing: 3) {
+                    Image(systemName: change.delta > 0 ? "arrow.up.right" : "arrow.down.right")
+                        .font(.caption2)
+                        .foregroundStyle(change.delta > 0 ? .orange : .green)
+                    Text("\(change.name) \(change.delta > 0 ? "+" : "−")\(ByteFormat.string(abs(change.delta)))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 5)
     }
 
     /// Bottom info bar showing whatever block the mouse is over.
@@ -227,6 +254,8 @@ struct DiskMapView: View {
             currentNode = tree
             largeFiles = s.largeFiles
             scanning = false
+            FolderTrends.shared.record(root: target, children: tree.children)
+            folderMovers = FolderTrends.shared.movers(root: target)
         }
     }
 
