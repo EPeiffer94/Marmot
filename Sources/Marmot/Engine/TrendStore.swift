@@ -53,20 +53,27 @@ final class TrendStore: ObservableObject {
 
     /// Category size changes between the two most recent snapshots,
     /// biggest absolute movers first.
+    /// (Written as explicit loops — long tuple-generic chains time out the
+    /// type checker on older Swift toolchains.)
     func movers(limit: Int = 3) -> [(name: String, delta: Int64)] {
         guard points.count >= 2 else { return [] }
         let current = points[points.count - 1].categorySizes
         let previous = points[points.count - 2].categorySizes
-        let names = Dictionary(uniqueKeysWithValues: CleanupScanner.categories().map { ($0.id, $0.name) })
-        return Set(current.keys).union(previous.keys)
-            .map { key in
-                (name: names[key] ?? key,
-                 delta: (current[key] ?? 0) - (previous[key] ?? 0))
+
+        var names: [String: String] = [:]
+        for category in CleanupScanner.categories() {
+            names[category.id] = category.name
+        }
+
+        var changes: [(name: String, delta: Int64)] = []
+        for key in Set(current.keys).union(previous.keys) {
+            let delta = (current[key] ?? 0) - (previous[key] ?? 0)
+            if delta != 0 {
+                changes.append((name: names[key] ?? key, delta: delta))
             }
-            .filter { $0.delta != 0 }
-            .sorted { abs($0.delta) > abs($1.delta) }
-            .prefix(limit)
-            .map { $0 }
+        }
+        changes.sort { abs($0.delta) > abs($1.delta) }
+        return Array(changes.prefix(limit))
     }
 
     // MARK: - Persistence

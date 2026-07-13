@@ -101,13 +101,12 @@ final class DuplicateEngine {
         for entry in keyed {
             if let entry { byKey[entry.key, default: []].append(entry.file) }
         }
-        return byKey.values
-            .filter { $0.count > 1 }
-            .map { files in
-                DuplicateGroup(sizeBytes: files[0].sizeBytes,
-                               files: files.sorted { $0.modified > $1.modified })
-            }
-            .sorted { $0.wastedBytes > $1.wastedBytes }
+        var groups: [DuplicateGroup] = []
+        for files in byKey.values where files.count > 1 {
+            groups.append(DuplicateGroup(sizeBytes: files[0].sizeBytes,
+                                         files: files.sorted { $0.modified > $1.modified }))
+        }
+        return groups.sorted { $0.wastedBytes > $1.wastedBytes }
     }
 
     /// SHA-256 over the file content. Files ≤ 4 MB are hashed in full;

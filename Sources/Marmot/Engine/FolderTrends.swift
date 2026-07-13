@@ -38,12 +38,11 @@ final class FolderTrends {
     /// Records the top-level folder sizes for a scan root (newest scan of the
     /// day wins).
     func record(root: String, children: [FileNode]) {
-        let sizes = Dictionary(
-            children
-                .filter { !$0.name.hasPrefix("(") } // skip synthetic nodes
-                .prefix(Self.maxFoldersPerSnapshot)
-                .map { ($0.name, $0.sizeBytes) },
-            uniquingKeysWith: { first, _ in first })
+        var sizes: [String: Int64] = [:]
+        for child in children where !child.name.hasPrefix("(") { // skip synthetic nodes
+            sizes[child.name] = child.sizeBytes
+            if sizes.count >= Self.maxFoldersPerSnapshot { break }
+        }
         var list = (snapshots[root] ?? []).filter {
             !Calendar.current.isDate($0.date, inSameDayAs: Date())
         }
@@ -53,17 +52,22 @@ final class FolderTrends {
     }
 
     /// Biggest folder-size changes between the two latest snapshots of a root.
+    /// (Explicit loops — see TrendStore.movers for why.)
     func movers(root: String, limit: Int = 4) -> Movers? {
         guard let list = snapshots[root], list.count >= 2 else { return nil }
         let current = list[list.count - 1].sizes
         let previous = list[list.count - 2].sizes
-        let changes = Set(current.keys).union(previous.keys)
-            .map { (name: $0, delta: (current[$0] ?? 0) - (previous[$0] ?? 0)) }
-            .filter { abs($0.delta) >= Self.minDelta }
-            .sorted { abs($0.delta) > abs($1.delta) }
-            .prefix(limit)
+
+        var changes: [(name: String, delta: Int64)] = []
+        for key in Set(current.keys).union(previous.keys) {
+            let delta = (current[key] ?? 0) - (previous[key] ?? 0)
+            if abs(delta) >= Self.minDelta {
+                changes.append((name: key, delta: delta))
+            }
+        }
         guard !changes.isEmpty else { return nil }
-        return Movers(since: list[list.count - 2].date, changes: Array(changes))
+        changes.sort { abs($0.delta) > abs($1.delta) }
+        return Movers(since: list[list.count - 2].date, changes: Array(changes.prefix(limit)))
     }
 
     // MARK: - Persistence
