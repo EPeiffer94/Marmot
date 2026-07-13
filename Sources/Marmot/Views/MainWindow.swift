@@ -116,6 +116,12 @@ struct MainWindow: View {
                 selection = .cleanup
                 CleanupModel.shared.rescan()
             })
+        items.append(PaletteItem(
+            title: "Check for Updates",
+            subtitle: "See if a newer Marmot is available",
+            icon: "arrow.down.circle") {
+                UpdaterBridge.shared.checkForUpdates()
+            })
         for rule in Autopilot.shared.rules where rule.isEnabled {
             items.append(PaletteItem(
                 title: "Run rule: \(rule.name)",

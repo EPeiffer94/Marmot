@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusController = StatusItemController()
         Autopilot.shared.start()
+        UpdaterBridge.shared.start()
     }
 }
 
@@ -30,6 +31,13 @@ struct MarmotApp: App {
                 .frame(minWidth: 980, minHeight: 640)
         }
         .windowStyle(.automatic)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    UpdaterBridge.shared.checkForUpdates()
+                }
+            }
+        }
 
         Settings {
             SettingsView()

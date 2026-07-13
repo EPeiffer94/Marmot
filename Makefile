@@ -27,6 +27,13 @@ bundle: build
 	@for lproj in Resources/*.lproj; do \
 		if [ -d "$$lproj" ]; then cp -R "$$lproj" $(CONTENTS)/Resources/; fi \
 	done
+	@# Embed Sparkle.framework (from the SPM artifact) for self-updates.
+	@FMWK=$$(find .build/artifacts -type d -name "Sparkle.framework" 2>/dev/null | grep -m1 macos); \
+	if [ -n "$$FMWK" ]; then \
+		mkdir -p $(CONTENTS)/Frameworks; \
+		cp -R "$$FMWK" $(CONTENTS)/Frameworks/; \
+	fi
+	@install_name_tool -add_rpath @executable_path/../Frameworks $(CONTENTS)/MacOS/$(APP_NAME) 2>/dev/null || true
 	codesign --force --deep --sign - $(BUNDLE)
 	@echo "Built $(BUNDLE) — move it to /Applications or run: open $(BUNDLE)"
 

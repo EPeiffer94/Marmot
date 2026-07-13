@@ -121,6 +121,22 @@ The **Live Status** tab is your dashboard; the **menu bar HUD** is the always-on
 
 ---
 
+## 🔄 Self-updates
+
+From 2.1.0 onward, Marmot updates itself via [Sparkle](https://sparkle-project.org): it checks the appcast feed in this repo, and every update zip is verified against the project's EdDSA public key before installing — no re-downloading, no Gatekeeper dance for updates.
+
+**Release process (maintainers):**
+
+```sh
+make release VERSION=x.y.z                          # build + zip
+sh scripts/make-appcast-entry.sh Marmot-x.y.z.zip x.y.z   # sign + update appcast.xml
+git add -A && git commit -m "Release x.y.z" && git push
+git tag vx.y.z && git push origin vx.y.z
+# then create the GitHub release and attach the zip (exact filename)
+```
+
+The signing key lives in the maintainer's Keychain (created once with Sparkle's `generate_keys`). Keep an exported backup somewhere safe — losing it means shipping one manual update to rotate keys.
+
 ## 🗂️ For the curious: project layout
 
 ```
