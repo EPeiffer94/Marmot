@@ -31,7 +31,21 @@ final class CleanupModel: ObservableObject {
     }
 
     private init() {
-        loadCache()
+        // Decode the cache off the main thread so launch stays instant;
+        // apply() refuses stale data if a live scan beat it.
+        let url = cacheURL
+        Task.detached(priority: .utility) { [weak self] in
+            guard let payload = Self.decodeCache(at: url) else { return }
+            await MainActor.run { self?.apply(payload) }
+        }
+    }
+
+    private func apply(_ payload: CachePayload) {
+        guard !scanning, lastScan == nil else { return }
+        for index in categories.indices {
+            categories[index].items = payload.items[categories[index].id] ?? []
+        }
+        lastScan = payload.date
     }
 
     // MARK: - Scanning
@@ -66,15 +80,11 @@ final class CleanupModel: ObservableObject {
 
     // MARK: - Cache
 
-    private func loadCache() {
-        guard let data = try? Data(contentsOf: cacheURL) else { return }
+    private static func decodeCache(at url: URL) -> CachePayload? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        guard let payload = try? decoder.decode(CachePayload.self, from: data) else { return }
-        for index in categories.indices {
-            categories[index].items = payload.items[categories[index].id] ?? []
-        }
-        lastScan = payload.date
+        return try? decoder.decode(CachePayload.self, from: data)
     }
 
     private func saveCache() {

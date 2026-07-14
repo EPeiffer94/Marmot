@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import Darwin
 
 struct DuplicateFile: Identifiable, Hashable {
     let id = UUID()
@@ -37,36 +38,10 @@ final class DuplicateEngine {
         // Size → (path, device:inode). The file ID lets us skip hardlinked
         // twins: removing one hardlink to the same file frees no space.
         var bySize: [Int64: [(path: String, fileID: String)]] = [:]
-        let fm = FileManager.default
 
         for root in roots {
-            guard let enumerator = fm.enumerator(
-                at: URL(fileURLWithPath: root),
-                includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
-                options: [.skipsPackageDescendants],
-                errorHandler: { _, _ in true }
-            ) else { continue }
-
-            for case let url as URL in enumerator {
-                if isCancelled { return [] }
-                let path = url.path
-                if DiskScanner.cloudRoots.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) {
-                    enumerator.skipDescendants()
-                    continue
-                }
-                if Self.skipExtensions.contains(url.pathExtension.lowercased()) {
-                    enumerator.skipDescendants()
-                    continue
-                }
-                guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
-                      values.isRegularFile == true,
-                      let size = values.fileSize,
-                      Int64(size) >= Self.minFileSize else { continue }
-                var sb = stat()
-                guard lstat(path, &sb) == 0 else { continue }
-                bySize[Int64(size), default: []].append(
-                    (path: path, fileID: "\(sb.st_dev):\(sb.st_ino)"))
-            }
+            if isCancelled { return [] }
+            collectCandidates(root: root, into: &bySize)
         }
 
         // Hash all same-size candidates in parallel — this is the slow part.
@@ -107,6 +82,44 @@ final class DuplicateEngine {
                                          files: files.sorted { $0.modified > $1.modified }))
         }
         return groups.sorted { $0.wastedBytes > $1.wastedBytes }
+    }
+
+    /// One fts pass per root: stat data (size, device, inode) comes free,
+    /// and packages/cloud folders are pruned without ever entering them.
+    private func collectCandidates(root: String,
+                                   into bySize: inout [Int64: [(path: String, fileID: String)]]) {
+        guard let dup = strdup(root) else { return }
+        let argv = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: 2)
+        argv[0] = dup
+        argv[1] = nil
+        defer {
+            free(dup)
+            argv.deallocate()
+        }
+        guard let fts = fts_open(argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return }
+        defer { fts_close(fts) }
+
+        while let entry = fts_read(fts) {
+            if isCancelled { return }
+            let info = Int32(entry.pointee.fts_info)
+            let path = String(cString: entry.pointee.fts_path)
+
+            if info == FTS_D {
+                let ext = ((path as NSString).lastPathComponent as NSString)
+                    .pathExtension.lowercased()
+                if Self.skipExtensions.contains(ext)
+                    || DiskScanner.cloudRoots.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) {
+                    _ = fts_set(fts, entry, FTS_SKIP)
+                }
+                continue
+            }
+
+            guard info == FTS_F, let st = entry.pointee.fts_statp else { continue }
+            let size = Int64(st.pointee.st_size)
+            guard size >= Self.minFileSize else { continue }
+            bySize[size, default: []].append(
+                (path: path, fileID: "\(st.pointee.st_dev):\(st.pointee.st_ino)"))
+        }
     }
 
     /// SHA-256 over the file content. Files ≤ 4 MB are hashed in full;

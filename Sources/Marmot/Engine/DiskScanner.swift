@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 /// A node in the disk-usage tree used by the treemap.
 final class FileNode: Identifiable {
@@ -84,6 +85,13 @@ final class DiskScanner {
             return FileNode(name: name, path: path, isDirectory: true, sizeBytes: 0)
         }
 
+        // From depth 2 down, one fts pass builds the whole subtree —
+        // structure to maxDepth, sizes accumulated beyond. Much faster than
+        // per-directory enumeration. Legacy recursion remains as fallback.
+        if depth >= 2, let node = ftsSubtree(path: path, baseDepth: depth) {
+            return node
+        }
+
         // Past maxDepth just sum sizes without keeping structure.
         if depth >= Self.maxDepth {
             let size = FileSizer.size(of: path)
@@ -129,6 +137,128 @@ final class DiskScanner {
                             isDirectory: true, sizeBytes: total, children: children)
         children.forEach { $0.parent = node }
         return node
+    }
+
+    /// Builds a whole subtree in one fts pass: tree structure down to
+    /// maxDepth, sizes accumulated beyond it. Runs inside the parallel
+    /// top-level fan-out, so shared state (largeFiles) stays lock-protected.
+    /// Returns nil if fts can't open the path (caller falls back).
+    private func ftsSubtree(path rootPath: String, baseDepth: Int) -> FileNode? {
+        final class Builder {
+            let name: String
+            let path: String
+            var size: Int64 = 0
+            var children: [FileNode] = []
+            init(name: String, path: String) {
+                self.name = name
+                self.path = path
+            }
+        }
+
+        guard let dup = strdup(rootPath) else { return nil }
+        let argv = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: 2)
+        argv[0] = dup
+        argv[1] = nil
+        defer {
+            free(dup)
+            argv.deallocate()
+        }
+        guard let fts = fts_open(argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return nil }
+        defer { fts_close(fts) }
+
+        var stack: [Builder] = []
+        var result: FileNode?
+        var directoriesSeen = 0
+
+        /// Pops a finished directory: sort, collapse the long tail, wire
+        /// parents, and attach to the enclosing builder (or emit as result).
+        func finish(_ builder: Builder) {
+            var children = builder.children
+            children.sort { $0.sizeBytes > $1.sizeBytes }
+            if children.count > Self.maxChildrenPerDir {
+                let kept = Array(children.prefix(Self.maxChildrenPerDir))
+                let restSize = children.dropFirst(Self.maxChildrenPerDir)
+                    .reduce(Int64(0)) { $0 + $1.sizeBytes }
+                let restCount = children.count - kept.count
+                children = kept
+                if restSize > 0 {
+                    children.append(FileNode(name: "(\(restCount) smaller items)",
+                                             path: builder.path, isDirectory: true,
+                                             sizeBytes: restSize))
+                }
+            }
+            let node = FileNode(name: builder.name, path: builder.path,
+                                isDirectory: true, sizeBytes: builder.size,
+                                children: children)
+            children.forEach { $0.parent = node }
+            if let parent = stack.last {
+                parent.size += builder.size
+                parent.children.append(node)
+            } else {
+                result = node
+            }
+        }
+
+        while let entry = fts_read(fts) {
+            if isCancelled { break }
+            let info = Int32(entry.pointee.fts_info)
+            let level = Int(entry.pointee.fts_level) // 0 == rootPath itself
+            let absoluteDepth = baseDepth + level
+            let entryPath = String(cString: entry.pointee.fts_path)
+
+            switch info {
+            case FTS_D:
+                // Cloud-provider folders: visible stub, never descended.
+                if skipCloud && Self.cloudRoots.contains(entryPath) {
+                    if absoluteDepth <= Self.maxDepth, let parent = stack.last {
+                        parent.children.append(FileNode(
+                            name: (entryPath as NSString).lastPathComponent + " (cloud — skipped)",
+                            path: entryPath, isDirectory: true, sizeBytes: 0))
+                    }
+                    _ = fts_set(fts, entry, FTS_SKIP)
+                    continue
+                }
+                directoriesSeen += 1
+                if directoriesSeen % 128 == 0 { onProgress?(entryPath) }
+                if absoluteDepth <= Self.maxDepth {
+                    stack.append(Builder(name: (entryPath as NSString).lastPathComponent,
+                                         path: entryPath))
+                } else if let st = entry.pointee.fts_statp {
+                    // Beyond the structure cap: count the dir inode like `du`.
+                    stack.last?.size += Int64(st.pointee.st_blocks) * 512
+                }
+
+            case FTS_DP:
+                if absoluteDepth <= Self.maxDepth, let builder = stack.popLast() {
+                    finish(builder)
+                }
+
+            case FTS_F:
+                guard let st = entry.pointee.fts_statp else { continue }
+                let size = Int64(st.pointee.st_blocks) * 512
+                if size >= Self.largeFileThreshold {
+                    largeFilesLock.lock()
+                    largeFiles.append(LargeFile(path: entryPath, sizeBytes: size))
+                    largeFilesLock.unlock()
+                }
+                if absoluteDepth <= Self.maxDepth {
+                    stack.last?.children.append(FileNode(
+                        name: (entryPath as NSString).lastPathComponent,
+                        path: entryPath, isDirectory: false, sizeBytes: size))
+                }
+                stack.last?.size += size
+
+            default:
+                // Symlinks (never followed), unreadable dirs, stat failures.
+                continue
+            }
+        }
+
+        // Cancellation or normal end: unwind whatever remains.
+        while let builder = stack.popLast() {
+            finish(builder)
+        }
+        return result
     }
 
     /// Builds the node for one directory entry, applying all skip rules.

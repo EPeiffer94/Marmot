@@ -58,10 +58,14 @@ final class StatusItemController: NSObject {
             }
             .store(in: &cancellables)
 
-        // Quiet background rescan every 4 hours — only when alerts are on.
+        // Quiet background rescan every 4 hours — only when alerts are on,
+        // and never when a scan already ran within the last hour (Autopilot
+        // and manual scans count).
         backgroundScanTimer = Timer.scheduledTimer(withTimeInterval: 4 * 3600, repeats: true) { _ in
             Task { @MainActor in
                 guard UserDefaults.standard.integer(forKey: Prefs.junkAlertGB) > 0 else { return }
+                if let last = CleanupModel.shared.lastScan,
+                   Date().timeIntervalSince(last) < 3600 { return }
                 CleanupModel.shared.rescan()
             }
         }
