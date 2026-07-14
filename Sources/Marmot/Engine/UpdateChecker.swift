@@ -92,7 +92,7 @@ enum UpdateChecker {
                 return AppUpdate(id: app.path, appName: app.name,
                                  installedVersion: app.version, latestVersion: latest,
                                  channel: "App Store",
-                                 howToUpdate: "Update via the App Store → Updates tab")
+                                 howToUpdate: "Check the App Store → Updates tab (store versioning can differ)")
             }
         }
         return nil
@@ -109,13 +109,35 @@ enum UpdateChecker {
 
     static func masVersion(bundleID: String) async -> String? {
         var comps = URLComponents(string: "https://itunes.apple.com/lookup")!
-        comps.queryItems = [URLQueryItem(name: "bundleId", value: bundleID)]
+        var query = [URLQueryItem(name: "bundleId", value: bundleID)]
+        // Use the user's storefront — latest versions can differ by country.
+        if let region = Locale.current.region?.identifier {
+            query.append(URLQueryItem(name: "country", value: region))
+        }
+        comps.queryItems = query
         guard let url = comps.url,
               let (data, _) = try? await URLSession.shared.data(from: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let results = json["results"] as? [[String: Any]],
-              let version = results.first?["version"] as? String else { return nil }
+              let first = results.first,
+              let version = first["version"] as? String else { return nil }
+        // The App Store only offers updates this macOS can actually run.
+        // Mirror that, or we report "updates" the store will never show.
+        if let minimumOS = first["minimumOsVersion"] as? String,
+           !currentOSSatisfies(minimumOS) {
+            return nil
+        }
         return version
+    }
+
+    static func currentOSSatisfies(_ minimum: String) -> Bool {
+        let parts = minimum.split(separator: ".").compactMap { Int($0) }
+        guard !parts.isEmpty else { return true }
+        let required = OperatingSystemVersion(
+            majorVersion: parts.count > 0 ? parts[0] : 0,
+            minorVersion: parts.count > 1 ? parts[1] : 0,
+            patchVersion: parts.count > 2 ? parts[2] : 0)
+        return ProcessInfo.processInfo.isOperatingSystemAtLeast(required)
     }
 
     /// Loose semantic version comparison.
