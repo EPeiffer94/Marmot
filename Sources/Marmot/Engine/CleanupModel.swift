@@ -36,7 +36,8 @@ final class CleanupModel: ObservableObject {
         let url = cacheURL
         Task.detached(priority: .utility) { [weak self] in
             guard let payload = Self.decodeCache(at: url) else { return }
-            await MainActor.run { self?.apply(payload) }
+            guard let self else { return }
+            await MainActor.run { self.apply(payload) }
         }
     }
 
