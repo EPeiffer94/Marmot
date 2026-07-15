@@ -7,6 +7,14 @@
     <language>en</language>
     <!-- MARMOT_APPCAST_ITEMS -->
     <item>
+      <title>Marmot 2.2.0</title>
+      <pubDate>Wed, 15 Jul 2026 11:01:24 -0400</pubDate>
+      <sparkle:version>49</sparkle:version>
+      <sparkle:shortVersionString>2.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.2.0/Marmot-2.2.0.zip" sparkle:edSignature="edaNNEM4llonSdo2GN9k2W33rL9R7mPA1RxClHKS/u6HZ9E3NhIUCZJPTo1J5na6zTpFnWWGRuABGIQytxuEAA==" length="2175092" type="application/octet-stream" />
+    </item>
+    <item>
       <title>Marmot 2.1.2</title>
       <pubDate>Tue, 14 Jul 2026 09:50:24 -0400</pubDate>
       <sparkle:version>42</sparkle:version>
