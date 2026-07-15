@@ -80,23 +80,41 @@ struct StartScreen<Extra: View>: View {
     let title: String
     let message: String
     let buttonLabel: String
+    let tint: Color
     let action: () -> Void
     let extra: Extra
 
     init(icon: String, title: String, message: String, buttonLabel: String,
+         tint: Color = Theme.accent,
          action: @escaping () -> Void,
          @ViewBuilder extra: () -> Extra) {
         self.icon = icon
         self.title = title
         self.message = message
         self.buttonLabel = buttonLabel
+        self.tint = tint
         self.action = action
         self.extra = extra()
     }
 
     var body: some View {
         VStack(spacing: 16) {
-            EmptyState(icon: icon, title: title, message: message)
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(Theme.wash(tint))
+                    .frame(width: 118, height: 118)
+                Image(systemName: icon)
+                    .font(.system(size: 46))
+                    .foregroundStyle(tint.gradient)
+            }
+            Text(title)
+                .font(.largeTitle.weight(.semibold))
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 420)
             extra
             Button(action: action) {
                 Label(buttonLabel, systemImage: "magnifyingglass")
@@ -104,7 +122,9 @@ struct StartScreen<Extra: View>: View {
             }
             .controlSize(.large)
             .buttonStyle(.borderedProminent)
-            Spacer().frame(height: 60)
+            .tint(tint)
+            Spacer()
+            Spacer().frame(height: 40)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -112,9 +132,10 @@ struct StartScreen<Extra: View>: View {
 
 extension StartScreen where Extra == EmptyView {
     init(icon: String, title: String, message: String, buttonLabel: String,
+         tint: Color = Theme.accent,
          action: @escaping () -> Void) {
         self.init(icon: icon, title: title, message: message,
-                  buttonLabel: buttonLabel, action: action) { EmptyView() }
+                  buttonLabel: buttonLabel, tint: tint, action: action) { EmptyView() }
     }
 }
 
@@ -230,14 +251,19 @@ enum Palette {
 // MARK: - Card chrome (shared by Dashboard and Live Status)
 
 extension View {
-    func cardStyle() -> some View {
+    /// Neutral card by default; pass a tint for a soft pastel wash.
+    func cardStyle(tint: Color? = nil) -> some View {
         background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.primary.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(Color.primary.opacity(0.06))
-                )
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.primary.opacity(0.035))
+                if let tint {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Theme.wash(tint))
+                }
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(Color.primary.opacity(0.06))
+            }
         )
     }
 }

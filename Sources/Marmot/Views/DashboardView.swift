@@ -64,7 +64,7 @@ struct DashboardView: View {
     // MARK: Suggestions
 
     private var suggestionsCard: some View {
-        card {
+        card(tint: .yellow) {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Suggestions", systemImage: "lightbulb")
                     .font(.headline)
@@ -95,7 +95,7 @@ struct DashboardView: View {
     // MARK: Report card
 
     private func reportCard(_ stats: FreedStats) -> some View {
-        card {
+        card(tint: .orange) {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Report Card", systemImage: "chart.bar.doc.horizontal")
                     .font(.headline)
@@ -135,7 +135,7 @@ struct DashboardView: View {
     // MARK: Health
 
     private var healthCard: some View {
-        card {
+        card(tint: .mint) {
             HStack(spacing: 16) {
                 HealthRing(score: snap.healthScore, lineWidth: 9, caption: "health")
                     .frame(width: 92, height: 92)
@@ -172,7 +172,7 @@ struct DashboardView: View {
     // MARK: Reclaimable space
 
     private var reclaimableCard: some View {
-        card {
+        card(tint: .teal) {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Reclaimable Space", systemImage: "sparkles")
                     .font(.headline)
@@ -238,7 +238,7 @@ struct DashboardView: View {
     // MARK: Trends
 
     private var trendsCard: some View {
-        card {
+        card(tint: .indigo) {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Storage Trends", systemImage: "chart.xyaxis.line")
                     .font(.headline)
@@ -307,9 +307,13 @@ struct DashboardView: View {
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: section.icon)
-                            .font(.title3)
-                            .foregroundStyle(.tint)
-                            .frame(width: 26)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Theme.color(for: section).gradient)
+                            )
                         VStack(alignment: .leading, spacing: 1) {
                             Text(section.rawValue)
                                 .font(.callout.weight(.medium))
@@ -323,8 +327,8 @@ struct DashboardView: View {
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.primary.opacity(0.04))
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Theme.wash(Theme.color(for: section)))
                     )
                 }
                 .buttonStyle(.plain)
@@ -334,10 +338,11 @@ struct DashboardView: View {
 
     // MARK: Card chrome
 
-    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func card<Content: View>(tint: Color? = nil,
+                                     @ViewBuilder content: () -> Content) -> some View {
         content()
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .cardStyle()
+            .cardStyle(tint: tint)
     }
 }
