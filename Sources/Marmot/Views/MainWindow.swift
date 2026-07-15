@@ -60,11 +60,29 @@ struct MainWindow: View {
 
     var body: some View {
         NavigationSplitView {
-            List(SidebarSection.allCases, selection: $selection) { section in
-                Label(section.rawValue, systemImage: section.icon)
-                    .tag(section)
+            List(selection: $selection) {
+                sidebarRow(.dashboard)
+                Section("Clean") {
+                    sidebarRow(.cleanup)
+                    sidebarRow(.autopilot)
+                    sidebarRow(.duplicates)
+                }
+                Section("Apps") {
+                    sidebarRow(.uninstall)
+                    sidebarRow(.unusedApps)
+                    sidebarRow(.updates)
+                }
+                Section("System") {
+                    sidebarRow(.diskMap)
+                    sidebarRow(.startup)
+                    sidebarRow(.maintenance)
+                    sidebarRow(.status)
+                }
+                Section("Activity") {
+                    sidebarRow(.history)
+                }
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+            .navigationSplitViewColumnWidth(min: 190, ideal: 210)
             .safeAreaInset(edge: .bottom) {
                 sidebarFooter
             }
@@ -84,6 +102,7 @@ struct MainWindow: View {
             case .history: HistoryView()
             }
         }
+        .tint(Theme.accent)
         .navigationTitle("Marmot")
         .background(
             // Hidden trigger so ⌘K works from anywhere in the window.
@@ -102,6 +121,23 @@ struct MainWindow: View {
         )) {
             OnboardingView { onboarded = true }
         }
+    }
+
+    /// CleanMyMac-style row: white glyph on the module's pastel squircle.
+    private func sidebarRow(_ section: SidebarSection) -> some View {
+        Label {
+            Text(section.rawValue)
+        } icon: {
+            Image(systemName: section.icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 21, height: 21)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Theme.color(for: section).gradient)
+                )
+        }
+        .tag(section)
     }
 
     private var paletteItems: [PaletteItem] {
