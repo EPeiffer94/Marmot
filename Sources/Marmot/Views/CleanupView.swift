@@ -60,7 +60,7 @@ struct CleanupView: View {
                         + "installers, build artifacts, and Trash. Nothing is removed without your "
                         + "review — every change is shown first, and you can dry-run it.",
                     buttonLabel: "Scan My Mac",
-                    tint: .teal) {
+                    tint: .green) {
             model.rescan()
         }
     }

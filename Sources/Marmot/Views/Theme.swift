@@ -9,20 +9,22 @@ enum Theme {
     /// Global accent — soft mint, applied at the window root.
     static let accent = Color.mint
 
+    /// Palette is deliberately restricted to pink, green, blue (and their
+    /// soft relatives mint/teal/cyan) over white — Marmot's signature scheme.
     static func color(for section: SidebarSection) -> Color {
         switch section {
         case .dashboard: return .mint
-        case .cleanup: return .teal
-        case .autopilot: return .indigo
+        case .cleanup: return .green
+        case .autopilot: return .blue
         case .uninstall: return .pink
-        case .unusedApps: return .orange
+        case .unusedApps: return .pink
         case .updates: return .blue
-        case .duplicates: return .purple
+        case .duplicates: return .pink
         case .diskMap: return .cyan
         case .startup: return .green
-        case .maintenance: return .yellow
-        case .status: return .red
-        case .history: return .gray
+        case .maintenance: return .teal
+        case .status: return .blue
+        case .history: return .mint
         }
     }
 

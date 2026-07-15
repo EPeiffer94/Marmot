@@ -18,7 +18,7 @@ struct AutopilotView: View {
                                 + "Runs are trash-first, logged in History, and announced with a "
                                 + "notification. Build artifacts and orphaned data stay manual-only.",
                             buttonLabel: "Create First Rule",
-                            tint: .indigo) {
+                            tint: .blue) {
                     showingNewRule = true
                 }
             } else {
