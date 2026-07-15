@@ -241,7 +241,8 @@ struct FlowLegend: View {
 // MARK: - Shared palette
 
 enum Palette {
-    static let colors: [Color] = [.blue, .teal, .orange, .purple, .pink, .indigo, .mint, .yellow, .cyan, .red]
+    /// Pink/green/blue pastel family only — Marmot's signature scheme.
+    static let colors: [Color] = [.pink, .green, .blue, .mint, .cyan, .teal]
 
     static func color(for index: Int) -> Color {
         colors[index % colors.count]

@@ -64,7 +64,7 @@ struct DashboardView: View {
     // MARK: Suggestions
 
     private var suggestionsCard: some View {
-        card(tint: .yellow) {
+        card(tint: .pink) {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Suggestions", systemImage: "lightbulb")
                     .font(.headline)
@@ -95,7 +95,7 @@ struct DashboardView: View {
     // MARK: Report card
 
     private func reportCard(_ stats: FreedStats) -> some View {
-        card(tint: .orange) {
+        card(tint: .mint) {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Report Card", systemImage: "chart.bar.doc.horizontal")
                     .font(.headline)
@@ -172,7 +172,7 @@ struct DashboardView: View {
     // MARK: Reclaimable space
 
     private var reclaimableCard: some View {
-        card(tint: .teal) {
+        card(tint: .green) {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Reclaimable Space", systemImage: "sparkles")
                     .font(.headline)
@@ -238,7 +238,7 @@ struct DashboardView: View {
     // MARK: Trends
 
     private var trendsCard: some View {
-        card(tint: .indigo) {
+        card(tint: .blue) {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Storage Trends", systemImage: "chart.xyaxis.line")
                     .font(.headline)

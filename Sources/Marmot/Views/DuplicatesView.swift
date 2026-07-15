@@ -59,7 +59,7 @@ struct DuplicatesView: View {
                         + "in Downloads, Documents, and Desktop. You choose which copy to keep — "
                         + "removals are trash-first and previewed like everything else.",
                     buttonLabel: "Scan for Duplicates",
-                    tint: .purple,
+                    tint: .pink,
                     action: { startScan() },
                     extra: {
                         VStack(spacing: 4) {

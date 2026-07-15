@@ -39,13 +39,13 @@ struct TreemapView: View {
             return Palette.color(for: index)
         }
         switch (cell.node.name as NSString).pathExtension.lowercased() {
-        case "mp4", "mov", "mkv", "avi", "m4v", "webm": return .purple
+        case "mp4", "mov", "mkv", "avi", "m4v", "webm": return .blue
         case "jpg", "jpeg", "png", "heic", "gif", "tiff", "raw", "cr2", "arw": return .pink
-        case "mp3", "m4a", "wav", "flac", "aac", "aiff": return .indigo
-        case "zip", "dmg", "pkg", "tar", "gz", "7z", "rar", "iso", "xip": return .orange
-        case "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "pages", "key", "numbers": return .teal
-        case "swift", "js", "ts", "py", "rb", "go", "rs", "c", "cpp", "h", "java", "json", "xml", "html", "css": return .blue
-        case "app": return .red
+        case "mp3", "m4a", "wav", "flac", "aac", "aiff": return .mint
+        case "zip", "dmg", "pkg", "tar", "gz", "7z", "rar", "iso", "xip": return .teal
+        case "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "pages", "key", "numbers": return .cyan
+        case "swift", "js", "ts", "py", "rb", "go", "rs", "c", "cpp", "h", "java", "json", "xml", "html", "css": return .green
+        case "app": return .pink
         default: return .gray
         }
     }
