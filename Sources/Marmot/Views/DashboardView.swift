@@ -143,7 +143,7 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     miniMetric("cpu", "CPU", snap.cpu.totalUsage, .blue)
                     miniMetric("memorychip", "Memory", snap.memory.usedPercent, .teal)
-                    miniMetric("internaldrive", "Disk", snap.disk.usedPercent, .orange)
+                    miniMetric("internaldrive", "Disk", snap.disk.usedPercent, .cyan)
                     Text("Uptime \(snap.uptime)")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
@@ -256,7 +256,7 @@ struct DashboardView: View {
                             y: .value("GB", Double(point.junkTotal) / 1_000_000_000),
                             series: .value("Metric", "Reclaimable junk")
                         )
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.pink)
                     }
                 }
                 .frame(height: 110)
@@ -267,7 +267,7 @@ struct DashboardView: View {
                         Text("Disk used (GB)").font(.caption2).foregroundStyle(.secondary)
                     }
                     HStack(spacing: 4) {
-                        Circle().fill(.orange).frame(width: 7, height: 7)
+                        Circle().fill(.pink).frame(width: 7, height: 7)
                         Text("Reclaimable junk (GB)").font(.caption2).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -283,7 +283,7 @@ struct DashboardView: View {
                             HStack(spacing: 3) {
                                 Image(systemName: mover.delta > 0 ? "arrow.up.right" : "arrow.down.right")
                                     .font(.caption2)
-                                    .foregroundStyle(mover.delta > 0 ? .orange : .green)
+                                    .foregroundStyle(mover.delta > 0 ? .pink : .green)
                                 Text("\(mover.name) \(mover.delta > 0 ? "+" : "−")\(ByteFormat.string(abs(mover.delta)))")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)

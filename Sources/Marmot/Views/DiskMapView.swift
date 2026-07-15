@@ -124,7 +124,7 @@ struct DiskMapView: View {
                 HStack(spacing: 3) {
                     Image(systemName: change.delta > 0 ? "arrow.up.right" : "arrow.down.right")
                         .font(.caption2)
-                        .foregroundStyle(change.delta > 0 ? .orange : .green)
+                        .foregroundStyle(change.delta > 0 ? .pink : .green)
                     Text("\(change.name) \(change.delta > 0 ? "+" : "−")\(ByteFormat.string(abs(change.delta)))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
