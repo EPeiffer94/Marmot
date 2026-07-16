@@ -14,6 +14,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case maintenance = "Maintenance"
     case status = "Live Status"
     case history = "History"
+    case settings = "Settings"
 
     var id: String { rawValue }
 
@@ -32,6 +33,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .maintenance: return "wrench.and.screwdriver"
         case .status: return "gauge.with.needle"
         case .history: return "clock.arrow.circlepath"
+        case .settings: return "gearshape"
         }
     }
 
@@ -51,8 +53,14 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .maintenance: return "Fix common system glitches"
         case .status: return "Live CPU, memory, network"
         case .history: return "Everything Marmot has done"
+        case .settings: return "Preferences, protection, support"
         }
     }
+}
+
+extension Notification.Name {
+    /// Posted by the menu bar HUD's gear button to open Settings in-window.
+    static let marmotOpenSettings = Notification.Name("marmot.openSettings")
 }
 
 struct MainWindow: View {
@@ -84,6 +92,7 @@ struct MainWindow: View {
                 }
                 Section("Activity") {
                     sidebarRow(.history)
+                    sidebarRow(.settings)
                 }
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210)
@@ -105,6 +114,9 @@ struct MainWindow: View {
             case .maintenance: MaintenanceView()
             case .status: StatusView()
             case .history: HistoryView()
+            case .settings:
+                SettingsView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .tint(Theme.accent)
@@ -125,6 +137,9 @@ struct MainWindow: View {
             set: { if !$0 { onboarded = true } }
         )) {
             OnboardingView { onboarded = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .marmotOpenSettings)) { _ in
+            selection = .settings
         }
     }
 

@@ -5,6 +5,7 @@ import SwiftUI
 struct StatusView: View {
 
     @EnvironmentObject var stats: StatsSampler
+    @StateObject private var speedTest = SpeedTest()
 
     var snap: SystemSnapshot { stats.snapshot }
 
@@ -19,6 +20,7 @@ struct StatusView: View {
                     networkCard
                     batteryOrGPUCard
                     processCard
+                    speedTestCard
                 }
             }
             .padding()
@@ -155,6 +157,50 @@ struct StatusView: View {
                         .frame(width: 70)
                 }
             }
+        }
+    }
+
+    private var speedTestCard: some View {
+        card("Internet Speed", icon: "speedometer") {
+            HStack(spacing: 14) {
+                labeled("Ping", speedTest.pingMS.map { String(format: "%.0f ms", $0) } ?? "—")
+                labeled("Download", speedTest.downloadMbps.map { String(format: "%.0f Mbps", $0) } ?? "—")
+                labeled("Upload", speedTest.uploadMbps.map { String(format: "%.0f Mbps", $0) } ?? "—")
+            }
+            HStack(spacing: 8) {
+                Button {
+                    speedTest.run()
+                } label: {
+                    if speedTest.isRunning {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text(speedPhaseText)
+                        }
+                    } else {
+                        Label(speedTest.phase == .idle ? "Run Speed Test" : "Run Again",
+                              systemImage: "play.fill")
+                    }
+                }
+                .disabled(speedTest.isRunning)
+                if case .failed(let message) = speedTest.phase {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .lineLimit(1)
+                }
+            }
+            Text("Tests against Cloudflare's nearby servers. Each direction runs for ~8 seconds.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private var speedPhaseText: String {
+        switch speedTest.phase {
+        case .pinging: return "Measuring ping…"
+        case .downloading: return "Testing download…"
+        case .uploading: return "Testing upload…"
+        default: return "Working…"
         }
     }
 
