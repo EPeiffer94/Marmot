@@ -11,7 +11,6 @@ enum Support {
     /// button shows up automatically once this is non-nil.
     static let sponsorsURL: URL? = URL(string: "https://github.com/sponsors/EPeiffer94")
 
-    /// Optional: a Ko-fi / Buy Me a Coffee page, e.g.
-    /// URL(string: "https://ko-fi.com/yourname")
-    static let coffeeURL: URL? = nil
+    /// Ko-fi tip jar.
+    static let coffeeURL: URL? = URL(string: "https://ko-fi.com/kasakir")
 }
