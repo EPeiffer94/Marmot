@@ -82,6 +82,16 @@ struct MenuBarHUD: View {
                         window.makeKeyAndOrderFront(nil)
                     }
                 }
+                Button {
+                    NSApp.activate(ignoringOtherApps: true)
+                    for window in NSApp.windows where !(window.title.isEmpty) {
+                        window.makeKeyAndOrderFront(nil)
+                    }
+                    NotificationCenter.default.post(name: .marmotOpenSettings, object: nil)
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .help("Open Settings")
                 Spacer()
                 Button("Quit") {
                     NSApp.terminate(nil)

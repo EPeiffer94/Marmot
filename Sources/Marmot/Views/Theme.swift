@@ -26,6 +26,7 @@ enum Theme {
         case .maintenance: return .teal
         case .status: return .blue
         case .history: return .mint
+        case .settings: return .gray
         }
     }
 
