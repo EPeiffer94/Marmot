@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
 
@@ -17,8 +18,60 @@ struct SettingsView: View {
                 .tabItem { Label("Protected Paths", systemImage: "shield") }
             purgeTab
                 .tabItem { Label("Project Folders", systemImage: "folder.badge.gearshape") }
+            supportTab
+                .tabItem { Label("Support", systemImage: "heart") }
         }
         .frame(width: 520, height: 380)
+    }
+
+    @AppStorage(Prefs.supporter) private var supporter = false
+
+    private var supportTab: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(Theme.wash(.pink))
+                    .frame(width: 92, height: 92)
+                Text("🐿️")
+                    .font(.system(size: 44))
+            }
+            Text("Marmot is free forever")
+                .font(.title3.weight(.semibold))
+            Text("No upsells, no license keys — that's the promise. If Marmot has saved you gigabytes and you'd like to feed the marmot, here's the tip jar.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
+            HStack(spacing: 10) {
+                Button {
+                    NSWorkspace.shared.open(Support.repoURL)
+                } label: {
+                    Label("Star on GitHub", systemImage: "star")
+                }
+                if let url = Support.sponsorsURL {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Label("Sponsor", systemImage: "heart.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.pink)
+                }
+                if let url = Support.coffeeURL {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Label("Buy a Coffee", systemImage: "cup.and.saucer")
+                    }
+                }
+            }
+            Toggle("I already support Marmot (hides the occasional nudge)", isOn: $supporter)
+                .font(.caption)
+                .padding(.top, 6)
+            Spacer()
+        }
+        .padding()
     }
 
     @AppStorage(Prefs.junkAlertGB) private var junkAlertGB = 0

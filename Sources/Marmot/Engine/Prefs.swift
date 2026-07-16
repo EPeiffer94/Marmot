@@ -11,4 +11,6 @@ enum Prefs {
     static let junkAlertGB = "marmot.junkAlertGB"
     /// Unix timestamp of the last junk notification (24h debounce).
     static let junkAlertNotifiedAt = "marmot.junkAlertNotifiedAt"
+    /// Honor-system "I already support Marmot" — hides the gentle nudge.
+    static let supporter = "marmot.supporter"
 }

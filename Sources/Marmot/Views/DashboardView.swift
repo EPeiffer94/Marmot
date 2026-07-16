@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import AppKit
 
 /// Home screen: system health at a glance, reclaimable space from the shared
 /// cleanup model (instant thanks to the persisted cache), and shortcuts into
@@ -12,6 +13,7 @@ struct DashboardView: View {
     @ObservedObject private var inventory = AppInventory.shared
     @State private var freedStats: FreedStats?
     @State private var suggestions: [Suggestion] = []
+    @AppStorage(Prefs.supporter) private var supporter = false
     var onNavigate: (SidebarSection) -> Void
 
     var snap: SystemSnapshot { stats.snapshot }
@@ -115,6 +117,20 @@ struct DashboardView: View {
                         }
                     }
                     Spacer(minLength: 0)
+                }
+                // Gentle, dismissible tip-jar nudge — only once Marmot has
+                // genuinely earned it, never for supporters.
+                if !supporter, stats.allTime > 10_000_000_000 {
+                    Button {
+                        NSWorkspace.shared.open(Support.sponsorsURL ?? Support.repoURL)
+                    } label: {
+                        Label("Marmot has freed \(ByteFormat.string(stats.allTime)) for you — feed the marmot? 🐿️",
+                              systemImage: "heart")
+                            .font(.caption)
+                            .foregroundStyle(.pink)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Marmot is free forever. This hides permanently via Settings → Support.")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
