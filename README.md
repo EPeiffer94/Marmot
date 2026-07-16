@@ -157,6 +157,10 @@ Issues and PRs are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for s
 
 **Translating Marmot** 🌍 — copy `Resources/en.lproj` to your language code (e.g. `Resources/de.lproj`), add `"English text" = "Translation";` lines to `Localizable.strings`, and build. The instructions inside the file walk you through it.
 
+## 💛 Support Marmot
+
+Marmot is free forever — no upsells, no license keys, and it's staying that way. If it has saved you gigabytes and you'd like to feed the marmot: ⭐ star the repo, [sponsor on GitHub](https://github.com/sponsors/EPeiffer94), or just tell a friend with a full disk. There's a tip jar in the app too (Settings → Support).
+
 ## 📜 License
 
 MIT — free forever, no upsells, no license keys. 🎁
