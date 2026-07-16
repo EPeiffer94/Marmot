@@ -2,57 +2,17 @@
 
 **A free, open-source Mac cleaner that shows you everything before it touches anything.**
 
-Marmot cleans, uninstalls, analyzes, maintains, and monitors your Mac — all in one lightweight native app. Think CleanMyMac + AppCleaner + DaisyDisk + iStat Menus, except it's free, MIT-licensed, and *obsessively* transparent about what it's doing. 💛
+Marmot cleans, uninstalls, automates, analyzes, and monitors your Mac — fourteen tools in one lightweight native app, dressed in friendly pastels. Think CleanMyMac + AppCleaner + DaisyDisk + iStat Menus + MacUpdater, except it's free, MIT-licensed, self-updating, and *obsessively* transparent about what it's doing. 💛
 
-Inspired by the wonderful [Mole CLI](https://github.com/tw93/mole), rebuilt from scratch in Swift/SwiftUI as a friendly GUI app.
-
----
-
-## ✨ The big idea: look before you leap
-
-Most cleaner apps ask you to trust them. Marmot doesn't want your trust — it wants to *show you*. 👀
-
-Every single action in Marmot goes through a **Change Plan** first:
-
-1. 📋 **Review** — see every file, folder, and command in a visual list with sizes, risk badges (🟢 low / 🟠 medium / 🔴 high), and plain-English explanations of what each thing is
-2. 👁️ **Dry run** — hit "Dry Run" and Marmot *simulates* the whole plan. Nothing on your disk is touched. You get a full report of what *would* have happened
-3. ✅ **Apply** — only after an explicit confirmation that spells out the consequences
-
-And even then:
-
-- 🗑️ **Trash-first** — removed files go to the Trash, so they're recoverable
-- 🛡️ **Safety gate** — every path is re-checked at the moment of deletion against protected zones (Documents, Desktop, Photos, Mail, backups… always off-limits)
-- 📖 **History** — everything Marmot does (dry runs included!) is logged, forever viewable in the History tab
-
----
-
-## 🧰 What's inside
-
-| | Module | What it does |
-|---|---|---|
-| ✨ | **Cleanup** | Deep-scans caches, logs, browser junk, developer clutter (DerivedData, npm/yarn/pip/cargo…), app caches (Spotify, Slack…), leftovers from deleted apps, old installers, and stale `node_modules` folders |
-| 🗑️ | **Uninstaller** | Removes an app *plus* all its hidden friends — launch agents, preferences, containers, caches, saved state |
-| ⬇️ | **App Updates** | Finds outdated apps via Homebrew, Sparkle feeds, and the App Store. One-click upgrades for Homebrew casks |
-| ⏳ | **Unused Apps** | Flags apps you haven't opened in 3/6/12 months (via Spotlight metadata) with their footprint — one click to the uninstaller |
-| 🪞 | **Duplicate Finder** | Finds files with identical content (hash-verified, not just matching names), you pick which copy to keep |
-| 🗺️ | **Disk Map** | A colorful, clickable treemap of your disk. Zoom into folders, spot the space hogs, find files over 100 MB |
-| ⚡ | **Startup Items** | Shows every login item, launch agent, and daemon in plain English — remove the ones slowing down your boot |
-| 🔧 | **Maintenance** | Flush DNS, rebuild Spotlight, refresh Finder/Dock, clear font caches… each task shows its *exact commands* before running |
-| 📊 | **Live Status** | Real-time CPU (per-core!), GPU, memory, disk I/O, network graphs, battery health, top processes, and an overall health score |
-| 🎛️ | **Menu bar HUD** | Live CPU% in your menu bar — click it for a mini dashboard |
-| 🕰️ | **History** | Every change and every dry run, searchable and filterable |
+Inspired by the wonderful [Mole CLI](https://github.com/tw93/mole), rebuilt from scratch in Swift/SwiftUI.
 
 ---
 
 ## 📦 Download (no Xcode needed)
 
-Grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.com/EPeiffer94/Marmot/releases), unzip it, and drag **Marmot.app** into your **Applications** folder.
+Grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.com/EPeiffer94/Marmot/releases), unzip, and drag **Marmot.app** into **Applications**. From then on it updates itself — signed, verified, one click.
 
-**First launch:** Marmot is free community software and isn't notarized through Apple's paid developer program, so macOS will balk the first time. Here's the one-time dance: 💃
-
-1. Double-click Marmot → macOS says it can't verify the app. Click **Done/OK** (not "Move to Trash"!)
-2. Open **System Settings → Privacy & Security**, scroll down, and click **"Open Anyway"** next to the Marmot message
-3. Confirm once more — and that's it, forever. 🎉
+**First launch only:** Marmot is free community software, not notarized through Apple's paid program, so macOS balks once. Double-click Marmot → click **OK** (not "Move to Trash"!) → **System Settings → Privacy & Security → "Open Anyway"** → confirm. That's the whole dance, forever. 💃
 
 <details>
 <summary>Terminal alternative (one line)</summary>
@@ -60,109 +20,129 @@ Grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.c
 ```sh
 xattr -cr /Applications/Marmot.app && open /Applications/Marmot.app
 ```
-This clears the quarantine flag macOS puts on downloaded files.
 </details>
-
-## 🚀 Building from source
-
-**You'll need:** macOS 13+ and Xcode (free on the App Store) or the full Swift toolchain.
-
-```sh
-git clone https://github.com/EPeiffer94/Marmot.git
-cd marmot
-make run
-```
-
-That's it! 🎉 `make` builds `Marmot.app` in the project folder — drag it to `/Applications` if you'd like to keep it around.
-
-### 🔐 Permissions: one grant, big difference
-
-Give Marmot **Full Disk Access**: System Settings → Privacy & Security → Full Disk Access → **+** → add Marmot. This is a one-time thing and it's the single biggest upgrade you can give the app — it lets the scanners *see* protected areas like Mail data, Safari storage, and other apps' containers. Without it nothing breaks; those spots are just invisible and get skipped. 🙈
-
-A few notes on how Marmot handles privileges:
-
-- 🏠 **Most features need no special access at all** — caches, logs, leftovers, Trash, and app uninstalls are all within your own user account
-- 🔑 **A handful of maintenance tasks need admin** (rebuilding Spotlight, purging memory, system launch daemons…) — these are labeled `admin` in the preview and use the standard macOS password dialog, per task, when you apply
-- 🚫 **Marmot never runs as root** — macOS breaks GUI apps launched that way (they lose their permission grants), so like every serious Mac utility, Marmot asks for elevation only at the moment it's needed
 
 ---
 
-## 🧭 A quick tour
+## ✨ The big idea: look before you leap
 
-### Your first cleanup 🧹
+Most cleaner apps ask for your trust. Marmot shows its work instead. 👀
 
-1. Open the **Cleanup** tab and hit **Scan My Mac**
-2. Watch the categories fill in with how much space each one is hoarding
-3. Check the ones you want and hit **Review Selected…**
-4. In the preview: uncheck anything you want to keep, then hit **Dry Run** to see a full "what would happen" report — zero risk
-5. Happy with it? **Apply for Real**. Files land in your Trash, so there's still an undo 😌
+Every destructive action goes through a **Change Plan**:
 
-### Uninstalling an app 👋
+1. 📋 **Review** — every file, folder, and command in a visual list with sizes, risk badges (🟢🟠🔴), and plain-English explanations
+2. 👁️ **Dry run** — simulate the whole plan; nothing on disk is touched, you get a full "would have happened" report
+3. ✅ **Apply** — only after a confirmation that spells out the consequences
 
-Pick an app in the **Uninstaller** tab → **Uninstall…** → Marmot shows the app *and* every leftover it found, grouped by location. Same drill: review, dry-run, apply.
+And even then: removals are **trash-first** (recoverable — and restorable straight from the History tab), every path is **re-validated at deletion time** against protected zones (Documents, Photos, Mail, backups… always off-limits), and everything is **logged**. Right-click any item in a preview to reveal it in Finder or mark it *Never Touch This*.
 
-### Exploring your disk 🔍
+---
 
-**Disk Map** → **Scan Home Folder** (or pick any folder). Click blocks to zoom in, right-click to reveal in Finder or remove. The **Large Files** toggle lists everything over 100 MB.
+## 🧰 What's inside
 
-### Keeping an eye on things 👀
+**🏠 Dashboard** — system health, reclaimable space with one-button **Smart Scan**, storage trends over time, and a suggestions feed that connects the dots ("12 GB of developer junk", "3 apps untouched for a year"). Press **⌘K** anywhere for the command palette.
 
-The **Live Status** tab is your dashboard; the **menu bar HUD** is the always-on mini version. Toggle the HUD in Settings if you prefer a quieter menu bar.
+### Clean
+
+| | | |
+|---|---|---|
+| ✨ | **Cleanup** | Caches, logs, browser junk, developer clutter, app caches, leftovers from deleted apps, old installers, stale `node_modules` |
+| ⏱️ | **Autopilot** | Write cleaning rules once — *"browser caches weekly"* — and Marmot runs them on schedule, trash-first, logged, announced |
+| 🪞 | **Duplicates** | Identical-content files (hash-verified, hardlink-aware); you pick the keeper |
+| 🔍 | **Big Files** | Every file over 100 MB in your home folder, filterable by size and age — find the forgotten 4 GB screen recording |
+
+### Apps
+
+| | | |
+|---|---|---|
+| 🗑️ | **Uninstaller** | App + all its hidden friends: launch agents, preferences, containers, caches. **Reset** clears an app's data without uninstalling; **Time Capsule** archives everything to a zip first, making uninstalls reversible forever |
+| ⏳ | **Unused Apps** | Apps unopened for 3/6/12 months (real Spotlight data) with their footprint |
+| ⬇️ | **App Updates** | Outdated apps via Homebrew, Sparkle feeds, and the App Store — plus **Watchtower**, which checks in the background and notifies you |
+
+### System
+
+| | | |
+|---|---|---|
+| 🗺️ | **Disk Map** | Clickable treemap colored by file type, with "since last scan: Movies +12 GB" folder diffing |
+| ⚡ | **Startup Items** | Every login item, agent, and daemon in plain English — trim your boot |
+| 🔧 | **Maintenance** | Flush DNS, rebuild Spotlight, thin Time Machine snapshots… each task shows its *exact commands* first |
+| 📊 | **Live Status** | Per-core CPU, GPU, memory, disk I/O, network graphs, battery health — plus a built-in **internet speed test** |
+| 🎛️ | **Menu bar HUD** | Live CPU% up top; click for a mini dashboard, junk alerts included |
+| 🕰️ | **History** | Every change and dry run, filterable — with one-click **Restore** from the Trash |
+
+> 💡 Several of these — App Reset, background update watching, scheduled cleaning, time-capsule uninstalls — are paid features elsewhere. Here they're just… features.
+
+---
+
+## 🧭 Your first five minutes
+
+1. **Dashboard → Smart Scan** — see what's reclaimable, with a colorful breakdown
+2. **Review Selected…** in Cleanup — uncheck anything, hit **Dry Run** for a zero-risk rehearsal, then apply. Files land in the Trash, and History can restore them
+3. **Big Files** — one scan, sort by size, gasp
+4. Grant **Full Disk Access** when you're ready (System Settings → Privacy & Security): one-time, and it lets the scanners see protected corners like Mail and other apps' containers. Without it nothing breaks — those spots are just skipped
 
 ---
 
 ## 🛡️ Safety, in plain words
 
-- Marmot **never** deletes anything without showing you first. There is no code path around the preview. 🙅
-- **High-risk items are never pre-checked.** You have to opt in.
-- Anything needing admin rights is labeled `admin` and uses the standard macOS password prompt — no sneaky privilege stuff.
-- Have a folder you never want touched? Add it in **Settings → Protected Paths** and it's invisible to every scanner.
-- Still nervous? Just use **Dry Run** for everything. Forever. That's a totally valid lifestyle. 💙
+- There is **no code path around the preview**. None. 🙅
+- High-risk items are never pre-checked; risky categories aren't even eligible for Autopilot
+- Admin-needing tasks are labeled `admin` and use the standard macOS password prompt
+- Your own no-go folders: **Settings → Protected Paths**
+- Marmot **never runs as root**, and never phones home — the only network calls are the ones you ask for (update checks, speed test)
+- Still nervous? Dry Run everything, forever. Totally valid lifestyle. 💙
 
 ---
 
 ## 🔄 Self-updates
 
-From 2.1.0 onward, Marmot updates itself via [Sparkle](https://sparkle-project.org): it checks the appcast feed in this repo, and every update zip is verified against the project's EdDSA public key before installing — no re-downloading, no Gatekeeper dance for updates.
+Since 2.1.0, Marmot updates itself via [Sparkle](https://sparkle-project.org): it checks this repo's appcast and cryptographically verifies every update against the project's EdDSA key before installing.
 
-**Release process (maintainers):**
+<details>
+<summary>Release process (maintainers)</summary>
 
 ```sh
-make release VERSION=x.y.z                          # build + zip
-sh scripts/make-appcast-entry.sh Marmot-x.y.z.zip x.y.z   # sign + update appcast.xml
+make release VERSION=x.y.z
+sh scripts/make-appcast-entry.sh Marmot-x.y.z.zip x.y.z
 git add -A && git commit -m "Release x.y.z" && git push
 git tag vx.y.z && git push origin vx.y.z
-# then create the GitHub release and attach the zip (exact filename)
+# create the GitHub release, attach the zip (exact filename)
 ```
 
-The signing key lives in the maintainer's Keychain (created once with Sparkle's `generate_keys`). Keep an exported backup somewhere safe — losing it means shipping one manual update to rotate keys.
+The signing key lives in the maintainer's Keychain — keep an exported backup safe.
+</details>
 
-## 🗂️ For the curious: project layout
+---
+
+## 🚀 Building from source
+
+macOS 13+ and Xcode (free) or the full Swift toolchain:
+
+```sh
+git clone https://github.com/EPeiffer94/Marmot.git
+cd Marmot
+make run
+```
 
 ```
 Sources/Marmot/
-  MarmotApp.swift          App entry: window, menu bar HUD, settings
-  Models/ChangePlan.swift  The preview-first core (ChangePlan / ChangeItem)
-  Engine/                  Scanners, safety rules, executor, stats sampling
-  Views/                   SwiftUI — one view per module + the preview sheet
+  Models/ChangePlan.swift  The preview-first core
+  Engine/                  Scanners, safety gate, executor, autopilot, stats
+  Views/                   SwiftUI — one file per tool + shared components
 ```
 
-The one file to read first: `Engine/SafetyRules.swift` — the allow-list and protected zones that everything else obeys.
+Read `Engine/SafetyRules.swift` first — it's the constitution everything else obeys. CI runs build + tests + SwiftLint on every push.
 
 ---
 
 ## 🤝 Contributing
 
-Issues and PRs are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, architecture, and the preview-first ground rule. Good first contributions: new cleanup categories, more app-cache definitions, better orphan detection, localizations.
-
-**Translating Marmot** 🌍 — copy `Resources/en.lproj` to your language code (e.g. `Resources/de.lproj`), add `"English text" = "Translation";` lines to `Localizable.strings`, and build. The instructions inside the file walk you through it.
+PRs and issues welcome — [CONTRIBUTING.md](CONTRIBUTING.md) has setup, architecture, and the preview-first ground rule. Easy first wins: new app-cache definitions (one line!), treemap colors, translations 🌍 (copy `Resources/en.lproj` to your language and follow the instructions inside).
 
 ## 💛 Support Marmot
 
-Marmot is free forever — no upsells, no license keys, and it's staying that way. If it has saved you gigabytes and you'd like to feed the marmot: ⭐ star the repo, [sponsor on GitHub](https://github.com/sponsors/EPeiffer94), or just tell a friend with a full disk. There's a tip jar in the app too (Settings → Support).
+Free forever — no upsells, no license keys, staying that way. If Marmot saved you gigabytes: ⭐ star the repo, [buy a coffee on Ko-fi](https://ko-fi.com/kasakir), [sponsor on GitHub](https://github.com/sponsors/EPeiffer94), or tell a friend with a full disk. Tip jar's in the app too: **Settings → Support**.
 
 ## 📜 License
 
-MIT — free forever, no upsells, no license keys. 🎁
-
-Not affiliated with Mole or mole.fit — feature inspiration lovingly credited to [tw93/Mole](https://github.com/tw93/mole).
+MIT. 🎁 Not affiliated with Mole or mole.fit — feature inspiration lovingly credited to [tw93/Mole](https://github.com/tw93/mole).
