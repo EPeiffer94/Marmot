@@ -13,4 +13,10 @@ enum Prefs {
     static let junkAlertNotifiedAt = "marmot.junkAlertNotifiedAt"
     /// Honor-system "I already support Marmot" — hides the gentle nudge.
     static let supporter = "marmot.supporter"
+    /// Archive app + data to a zip before uninstalling.
+    static let timeCapsule = "marmot.timeCapsule"
+    /// Watchtower cadence in days (0 = off).
+    static let watchtowerDays = "marmot.watchtowerDays"
+    /// Unix timestamp of the last Watchtower check.
+    static let watchtowerLastCheck = "marmot.watchtowerLastCheck"
 }

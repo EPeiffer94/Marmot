@@ -8,6 +8,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case unusedApps = "Unused Apps"
     case updates = "App Updates"
     case duplicates = "Duplicates"
+    case bigFiles = "Big Files"
     case diskMap = "Disk Map"
     case startup = "Startup Items"
     case maintenance = "Maintenance"
@@ -25,6 +26,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .unusedApps: return "hourglass"
         case .updates: return "arrow.down.app"
         case .duplicates: return "doc.on.doc"
+        case .bigFiles: return "externaldrive"
         case .diskMap: return "square.grid.3x3.topleft.filled"
         case .startup: return "power"
         case .maintenance: return "wrench.and.screwdriver"
@@ -43,6 +45,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .unusedApps: return "Find apps you never open"
         case .updates: return "Check for newer versions"
         case .duplicates: return "Find identical files"
+        case .bigFiles: return "Hunt huge, forgotten files"
         case .diskMap: return "See where space goes"
         case .startup: return "Manage login and launch items"
         case .maintenance: return "Fix common system glitches"
@@ -66,6 +69,7 @@ struct MainWindow: View {
                     sidebarRow(.cleanup)
                     sidebarRow(.autopilot)
                     sidebarRow(.duplicates)
+                    sidebarRow(.bigFiles)
                 }
                 Section("Apps") {
                     sidebarRow(.uninstall)
@@ -95,6 +99,7 @@ struct MainWindow: View {
             case .unusedApps: UnusedAppsView()
             case .updates: UpdatesView()
             case .duplicates: DuplicatesView()
+            case .bigFiles: BigFilesView()
             case .diskMap: DiskMapView()
             case .startup: StartupItemsView()
             case .maintenance: MaintenanceView()

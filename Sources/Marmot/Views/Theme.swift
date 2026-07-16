@@ -20,6 +20,7 @@ enum Theme {
         case .unusedApps: return .pink
         case .updates: return .blue
         case .duplicates: return .pink
+        case .bigFiles: return .blue
         case .diskMap: return .cyan
         case .startup: return .green
         case .maintenance: return .teal

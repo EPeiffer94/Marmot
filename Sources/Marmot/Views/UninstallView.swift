@@ -11,6 +11,7 @@ struct UninstallView: View {
     @State private var buildingPlan = false
     @State private var activePlan: ChangePlan?
     @State private var sortOrder = [KeyPathComparator(\InstalledApp.name)]
+    @AppStorage(Prefs.timeCapsule) private var timeCapsule = false
 
     var filtered: [InstalledApp] {
         var apps = inventory.apps
@@ -35,12 +36,23 @@ struct UninstallView: View {
         .toolbar {
             ToolbarItemGroup {
                 if buildingPlan { ProgressView().controlSize(.small) }
+                Toggle(isOn: $timeCapsule) {
+                    Label("Time Capsule", systemImage: "archivebox")
+                }
+                .help("Before uninstalling, archive the app and its data to a zip you choose — making the uninstall fully reversible, forever.")
                 Button {
                     inventory.refresh()
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
                 .keyboardShortcut("r", modifiers: .command)
+                Button {
+                    buildPlan(reset: true)
+                } label: {
+                    Label("Reset…", systemImage: "arrow.counterclockwise")
+                }
+                .disabled(selectedApp == nil || buildingPlan)
+                .help("Clears the app's caches, preferences, and data — a factory reset. The app itself stays installed.")
                 Button {
                     buildPlan()
                 } label: {
@@ -105,6 +117,10 @@ struct UninstallView: View {
                 selectedApp = inventory.apps.first { ids.contains($0.id) }
                 buildPlan()
             }
+            Button("Reset (keep app, clear its data)…") {
+                selectedApp = inventory.apps.first { ids.contains($0.id) }
+                buildPlan(reset: true)
+            }
             Button("Show in Finder") {
                 if let app = inventory.apps.first(where: { ids.contains($0.id) }) {
                     NSWorkspace.shared.selectFile(app.path, inFileViewerRootedAtPath: "")
@@ -113,23 +129,45 @@ struct UninstallView: View {
         }
     }
 
-    private func buildPlan() {
+    private func buildPlan(reset: Bool = false) {
         guard let app = selectedApp else { return }
         buildingPlan = true
         Task { @MainActor in
             var plan = await Task.detached(priority: .userInitiated) {
-                UninstallEngine.uninstallPlan(for: app)
+                reset ? UninstallEngine.resetPlan(for: app)
+                      : UninstallEngine.uninstallPlan(for: app)
             }.value
+
+            var prefix: [ChangeItem] = []
             if app.isRunning {
-                let quit = ChangeItem(
-                    target: "osascript -e 'tell application \"\(app.name)\" to quit'",
+                prefix.append(UninstallEngine.quitItem(for: app))
+            }
+            // Time Capsule: archive the app and its data first, so the
+            // uninstall stays reversible even after the Trash empties.
+            if !reset && timeCapsule, let destination = askForArchiveDestination(app: app) {
+                let paths = [app.path] + plan.items
+                    .filter { $0.action == .moveToTrash && $0.target != app.path }
+                    .map(\.target)
+                let quoted = paths.map { "\"\($0)\"" }.joined(separator: " ")
+                prefix.append(ChangeItem(
+                    target: "/usr/bin/zip -qry \"\(destination.path)\" \(quoted)",
                     action: .runCommand,
-                    note: "Quits \(app.name) before removal.",
-                    group: "Before removal")
-                plan = ChangePlan(title: plan.title, source: plan.source, items: [quit] + plan.items)
+                    note: "Archives the app and all its data to \(destination.lastPathComponent) before anything is removed.",
+                    group: "Time Capsule"))
+            }
+            if !prefix.isEmpty {
+                plan = ChangePlan(title: plan.title, source: plan.source, items: prefix + plan.items)
             }
             buildingPlan = false
             activePlan = plan
         }
+    }
+
+    private func askForArchiveDestination(app: InstalledApp) -> URL? {
+        let panel = NSSavePanel()
+        panel.title = "Save Time Capsule"
+        panel.nameFieldStringValue = "\(app.name)-TimeCapsule.zip"
+        panel.directoryURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        return panel.runModal() == .OK ? panel.url : nil
     }
 }

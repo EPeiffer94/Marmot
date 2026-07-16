@@ -106,6 +106,24 @@ enum UninstallEngine {
         return ChangePlan(title: "Uninstall \(app.name)", source: "Uninstall", items: items)
     }
 
+    /// "Factory reset" for a misbehaving app: clears its caches, preferences,
+    /// containers, and saved state — the app itself stays installed. Only
+    /// trash-first file actions; launch items are left alone.
+    static func resetPlan(for app: InstalledApp) -> ChangePlan {
+        let items = remnants(bundleID: app.bundleID, appName: app.name)
+            .filter { $0.action == .moveToTrash }
+        return ChangePlan(title: "Reset \(app.name)", source: "Reset", items: items)
+    }
+
+    /// Quit step used before uninstall/reset when the app is running.
+    static func quitItem(for app: InstalledApp) -> ChangeItem {
+        ChangeItem(
+            target: "osascript -e 'tell application \"\(app.name)\" to quit'",
+            action: .runCommand,
+            note: "Quits \(app.name) first so its files aren't in use.",
+            group: "Before starting")
+    }
+
     /// Remnants for an app that may or may not still be installed.
     static func remnants(bundleID: String, appName: String) -> [ChangeItem] {
         let id = bundleID
