@@ -75,11 +75,17 @@ struct SettingsView: View {
     }
 
     @AppStorage(Prefs.junkAlertGB) private var junkAlertGB = 0
+    @AppStorage(Prefs.watchtowerDays) private var watchtowerDays = 0
 
     private var generalTab: some View {
         Form {
             Toggle("Show menu bar HUD", isOn: $hudEnabled)
             Toggle("Suggest dry run before applying", isOn: $defaultDryRun)
+            Picker("Watch for app updates", selection: $watchtowerDays) {
+                Text("Off").tag(0)
+                Text("Daily").tag(1)
+                Text("Weekly").tag(7)
+            }
             Picker("Junk alert in menu bar", selection: $junkAlertGB) {
                 Text("Off").tag(0)
                 Text("Over 5 GB").tag(5)

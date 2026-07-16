@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusController = StatusItemController()
         Autopilot.shared.start()
         UpdaterBridge.shared.start()
+        Watchtower.shared.start()
     }
 }
 
