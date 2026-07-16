@@ -20,7 +20,9 @@ final class SpeedTest: ObservableObject {
     @Published private(set) var uploadMbps: Double?
 
     private static let pingURL = URL(string: "https://speed.cloudflare.com/__down?bytes=1")!
-    private static let downloadURL = URL(string: "https://speed.cloudflare.com/__down?bytes=200000000")!
+    // Cloudflare caps __down somewhere between 50 and 100 MB — stay safely
+    // under it; the probe loops requests until its time cap anyway.
+    private static let downloadURL = URL(string: "https://speed.cloudflare.com/__down?bytes=50000000")!
     private static let uploadURL = URL(string: "https://speed.cloudflare.com/__up")!
 
     var isRunning: Bool {
@@ -62,12 +64,15 @@ final class SpeedTest: ObservableObject {
     }
 }
 
-/// Times a transfer, cancelling once the cap elapses, and reports Mbps from
-/// whatever moved in that window. Works for fast and slow lines alike.
+/// Times transfers, looping requests until the cap elapses, and reports Mbps
+/// from everything moved in that window. Looping keeps the measurement
+/// accurate on fast lines even though the server caps per-request sizes.
 private final class ThroughputProbe: NSObject, URLSessionDataDelegate {
 
     private let cap: TimeInterval
+    private var makeTask: ((URLSession) -> URLSessionTask)?
     private var transferred: Int64 = 0
+    private var transferredBeforeCurrentTask: Int64 = 0
     private var started = Date()
     private var continuation: CheckedContinuation<Double, Error>?
     private var finished = false
@@ -90,7 +95,7 @@ private final class ThroughputProbe: NSObject, URLSessionDataDelegate {
         let probe = ThroughputProbe(cap: cap)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        let payload = Data(count: 64 * 1024 * 1024) // plenty; the cap cuts it short
+        let payload = Data(count: 16 * 1024 * 1024) // accepted by the server; looped
         return try await withCheckedThrowingContinuation { continuation in
             probe.begin(continuation: continuation) { session in
                 session.uploadTask(with: request, from: payload)
@@ -99,8 +104,9 @@ private final class ThroughputProbe: NSObject, URLSessionDataDelegate {
     }
 
     private func begin(continuation: CheckedContinuation<Double, Error>,
-                       makeTask: (URLSession) -> URLSessionTask) {
+                       makeTask: @escaping (URLSession) -> URLSessionTask) {
         self.continuation = continuation
+        self.makeTask = makeTask
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = 1
         let session = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: queue)
@@ -118,6 +124,7 @@ private final class ThroughputProbe: NSObject, URLSessionDataDelegate {
         case .failure(let error): continuation?.resume(throwing: error)
         }
         continuation = nil
+        makeTask = nil
         session?.invalidateAndCancel()
         session = nil
     }
@@ -125,6 +132,21 @@ private final class ThroughputProbe: NSObject, URLSessionDataDelegate {
     private var currentRate: Double {
         let elapsed = max(Date().timeIntervalSince(started), 0.1)
         return Double(transferred) * 8 / elapsed / 1_000_000
+    }
+
+    // MARK: Response guard — a refusal must be an error, never "0 Mbps"
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
+                    didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            completionHandler(.cancel)
+            finish(with: .failure(NSError(
+                domain: "SpeedTest", code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Speed server refused (HTTP \(http.statusCode))."])))
+            return
+        }
+        completionHandler(.allow)
     }
 
     // MARK: Download progress
@@ -144,7 +166,7 @@ private final class ThroughputProbe: NSObject, URLSessionDataDelegate {
                     didSendBodyData bytesSent: Int64,
                     totalBytesSent: Int64,
                     totalBytesExpectedToSend: Int64) {
-        transferred = totalBytesSent
+        transferred = transferredBeforeCurrentTask + totalBytesSent
         if Date().timeIntervalSince(started) >= cap {
             let rate = currentRate
             task.cancel()
@@ -152,12 +174,26 @@ private final class ThroughputProbe: NSObject, URLSessionDataDelegate {
         }
     }
 
-    // MARK: Completion (natural finish, cancellation, or failure)
+    // MARK: Completion — loop another request if time remains
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     didCompleteWithError error: Error?) {
-        if let error, (error as NSError).code != NSURLErrorCancelled, transferred == 0 {
-            finish(with: .failure(error))
+        guard !finished else { return }
+
+        if let error, (error as NSError).code != NSURLErrorCancelled {
+            if transferred > 0 {
+                finish(with: .success(currentRate))
+            } else {
+                finish(with: .failure(error))
+            }
+            return
+        }
+
+        let madeProgress = transferred > transferredBeforeCurrentTask
+        if Date().timeIntervalSince(started) < cap, madeProgress, let makeTask {
+            // Chunk finished early — keep the clock running with another one.
+            transferredBeforeCurrentTask = transferred
+            makeTask(session).resume()
         } else {
             finish(with: .success(currentRate))
         }
