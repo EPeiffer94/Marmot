@@ -47,6 +47,7 @@ struct WrappedView: View {
         return renderer.nsImage
     }
 
+    @MainActor
     private func copyImage() {
         guard let image = renderImage() else { return }
         NSPasteboard.general.clearContents()
@@ -55,6 +56,7 @@ struct WrappedView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
     }
 
+    @MainActor
     private func savePNG() {
         guard let image = renderImage(),
               let tiff = image.tiffRepresentation,
