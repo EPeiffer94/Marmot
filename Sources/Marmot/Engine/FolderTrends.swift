@@ -51,6 +51,16 @@ final class FolderTrends {
         save()
     }
 
+    /// Roots that have enough history for Time Travel (≥2 snapshots).
+    var rootsWithHistory: [String] {
+        snapshots.filter { $0.value.count >= 2 }.keys.sorted()
+    }
+
+    /// Full snapshot history for one root, oldest first.
+    func history(for root: String) -> [Snapshot] {
+        snapshots[root] ?? []
+    }
+
     /// Biggest folder-size changes between the two latest snapshots of a root.
     /// (Explicit loops — see TrendStore.movers for why.)
     func movers(root: String, limit: Int = 4) -> Movers? {

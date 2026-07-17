@@ -70,11 +70,16 @@ struct UninstallView: View {
         }
         .onAppear { inventory.loadIfNeeded() }
         .onReceive(NotificationCenter.default.publisher(for: .marmotUninstallIntent)) { note in
-            guard let path = note.userInfo?["appPath"] as? String,
-                  let app = inventory.apps.first(where: { $0.id == path }) else { return }
-            search = ""
-            selectedApp = app
-            buildPlan(reset: (note.userInfo?["reset"] as? Bool) ?? false)
+            guard let path = note.userInfo?["appPath"] as? String else { return }
+            if let app = inventory.apps.first(where: { $0.id == path }) {
+                search = ""
+                selectedApp = app
+                buildPlan(reset: (note.userInfo?["reset"] as? Bool) ?? false)
+            } else {
+                // Inventory may still be loading (e.g. Dock drop at launch) —
+                // surface the app by name so it's one click away.
+                search = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+            }
         }
         .navigationSubtitle("\(inventory.apps.count) apps installed")
     }
