@@ -55,10 +55,13 @@ struct DashboardView: View {
         let apps = inventory.apps
         let free = snap.disk.freeBytes
         let total = snap.disk.totalBytes
+        let hasRules = Autopilot.shared.rules.contains { $0.isEnabled }
         Task { @MainActor in
             suggestions = await Task.detached(priority: .utility) {
                 SuggestionEngine.compute(categories: categories, apps: apps,
-                                         diskFree: free, diskTotal: total)
+                                         diskFree: free, diskTotal: total,
+                                         historyEntries: OperationLog.shared.readAll(),
+                                         hasAutopilotRules: hasRules)
             }.value
         }
     }

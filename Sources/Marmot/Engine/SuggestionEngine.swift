@@ -15,8 +15,16 @@ enum SuggestionEngine {
     static func compute(categories: [CleanupCategory],
                         apps: [InstalledApp],
                         diskFree: Int64,
-                        diskTotal: Int64) -> [Suggestion] {
+                        diskTotal: Int64,
+                        historyEntries: [LogEntry] = [],
+                        hasAutopilotRules: Bool = true) -> [Suggestion] {
         var suggestions: [Suggestion] = []
+
+        // Habit detection: repeated manual cleaning with no rules set up.
+        if let nudge = habitNudge(entries: historyEntries,
+                                  hasAutopilotRules: hasAutopilotRules) {
+            suggestions.append(nudge)
+        }
 
         // Disk nearly full — leads the list when true.
         if diskTotal > 0, Double(diskFree) / Double(diskTotal) < 0.1 {
@@ -77,5 +85,26 @@ enum SuggestionEngine {
         }
 
         return Array(suggestions.prefix(5))
+    }
+
+    /// If the user manually cleaned on 3+ separate days in the last month and
+    /// has no enabled Autopilot rules, gently point at Autopilot.
+    static func habitNudge(entries: [LogEntry],
+                           hasAutopilotRules: Bool,
+                           now: Date = Date()) -> Suggestion? {
+        guard !hasAutopilotRules else { return nil }
+        let cutoff = now.addingTimeInterval(-30 * 86_400)
+        let cleaningDays = Set(entries
+            .filter {
+                $0.source == "Cleanup" && !$0.dryRun
+                    && $0.outcome == ItemOutcome.done.rawValue
+                    && $0.date > cutoff
+            }
+            .map { Calendar.current.startOfDay(for: $0.date) })
+        guard cleaningDays.count >= 3 else { return nil }
+        return Suggestion(
+            icon: "clock.badge.checkmark",
+            text: "You've cleaned manually on \(cleaningDays.count) days this month — Autopilot can do it on a schedule",
+            target: .autopilot)
     }
 }

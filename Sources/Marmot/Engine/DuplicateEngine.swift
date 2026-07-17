@@ -122,6 +122,32 @@ final class DuplicateEngine {
         }
     }
 
+    /// Picks the copy most worth keeping: organized locations beat the
+    /// Downloads dumping ground, clean names beat "report copy (2)", and
+    /// the newest copy breaks ties.
+    static func preferredKeeper(among files: [DuplicateFile]) -> DuplicateFile? {
+        files.max { keeperScore($0) == keeperScore($1)
+            ? $0.modified < $1.modified
+            : keeperScore($0) < keeperScore($1) }
+    }
+
+    static func keeperScore(_ file: DuplicateFile) -> Int {
+        var score = 0
+        let home = SafetyRules.home.lowercased()
+        let dir = file.directory.lowercased()
+        if dir.hasPrefix(home + "/documents") { score += 40 }
+        else if dir.hasPrefix(home + "/desktop") { score += 25 }
+        else if dir.hasPrefix(home + "/downloads") { score -= 20 }
+
+        let name = file.name.lowercased()
+        if name.contains(" copy") || name.contains("duplicate") { score -= 30 }
+        if name.range(of: #"\(\d+\)"#, options: .regularExpression) != nil { score -= 30 }
+
+        // Slight preference for organized (deeper) folders over root dumps.
+        score += min(file.path.components(separatedBy: "/").count, 10)
+        return score
+    }
+
     /// SHA-256 over the file content. Files ≤ 4 MB are hashed in full;
     /// larger files are hashed via 1 MB chunks at head, middle, and tail
     /// (identical size + identical chunks is a reliable duplicate signal).

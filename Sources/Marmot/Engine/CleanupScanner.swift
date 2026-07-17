@@ -181,8 +181,28 @@ enum CleanupScanner {
     static let bundleIDRegex = try? NSRegularExpression(
         pattern: "^[A-Za-z0-9-]+\\.[A-Za-z0-9-]+\\.[A-Za-z0-9-.]+$")
 
+    /// Installer receipts (pkgutil) — used to *name* which package left an
+    /// orphan behind. Receipts persist after manual app deletion, so they
+    /// attribute leftovers; they can't prove software is still installed.
+    static func installerReceiptIDs() -> Set<String> {
+        guard Shell.exists("/usr/sbin/pkgutil") else { return [] }
+        let output = Shell.run("/usr/sbin/pkgutil", ["--pkgs"], timeout: 10)
+        guard output.succeeded else { return [] }
+        return Set(output.stdout.split(separator: "\n")
+            .map { $0.lowercased().trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty })
+    }
+
+    /// Same-family match between a bundle-id-ish name and a receipt id.
+    static func receiptFamilyMatch(_ id: String, in receipts: Set<String>) -> String? {
+        receipts.first { receipt in
+            id == receipt || id.hasPrefix(receipt + ".") || receipt.hasPrefix(id + ".")
+        }
+    }
+
     static func scanOrphans() -> [ChangeItem] {
         let installed = installedBundleIDs()
+        let receipts = installerReceiptIDs()
         guard let bundleIDPattern = bundleIDRegex else { return [] }
 
         func looksLikeBundleID(_ name: String) -> Bool {
@@ -214,8 +234,13 @@ enum CleanupScanner {
             for path in children(of: dir) {
                 let name = (path as NSString).lastPathComponent
                 guard isOrphan(name) else { continue }
+                let id = owner(of: name)
+                var note = "\(id) does not appear to be installed anymore."
+                if let package = receiptFamilyMatch(id, in: receipts) {
+                    note += " Originally installed via package \(package)."
+                }
                 specs.append(Spec(path: path, group: group, risk: risk,
-                                  note: "\(owner(of: name)) does not appear to be installed anymore.",
+                                  note: note,
                                   selected: risk == .low))
             }
         }

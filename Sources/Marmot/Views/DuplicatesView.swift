@@ -134,8 +134,13 @@ struct DuplicatesView: View {
         .padding(.vertical, 2)
     }
 
+    /// User's explicit choice wins; otherwise the smart-keeper heuristics.
+    private func keeperID(for group: DuplicateGroup) -> UUID? {
+        keepers[group.id] ?? DuplicateEngine.preferredKeeper(among: group.files)?.id
+    }
+
     private func fileRow(file: DuplicateFile, group: DuplicateGroup) -> some View {
-        let keeperID = keepers[group.id] ?? group.files.first?.id
+        let keeperID = keeperID(for: group)
         let isKeeper = file.id == keeperID
         return HStack(spacing: 10) {
             Button {
@@ -237,7 +242,7 @@ struct DuplicatesView: View {
     private func buildPlan() {
         var items: [ChangeItem] = []
         for group in groups where includedGroups.contains(group.id) {
-            let keeperID = keepers[group.id] ?? group.files.first?.id
+            let keeperID = keeperID(for: group)
             guard let keeper = group.files.first(where: { $0.id == keeperID }) else { continue }
             for file in group.files where file.id != keeper.id {
                 items.append(ChangeItem(
