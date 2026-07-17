@@ -37,6 +37,19 @@ path = "appcast.xml"
 content = open(path).read()
 marker = "<!-- MARMOT_APPCAST_ITEMS -->"
 assert marker in content, "marker missing from appcast.xml"
+
+# Replace any existing entry for this version — running the script twice must
+# never stack duplicate items (mismatched signatures break Sparkle updates).
+import re
+pattern = re.compile(
+    r"\n\s*<item>(?:(?!</item>).)*?<sparkle:shortVersionString>"
+    + re.escape(ver)
+    + r"</sparkle:shortVersionString>(?:(?!</item>).)*?</item>",
+    re.DOTALL)
+content, removed = pattern.subn("", content)
+if removed:
+    print(f"Replaced {removed} existing {ver} entr{'y' if removed == 1 else 'ies'}")
+
 open(path, "w").write(content.replace(marker, marker + "\n" + item, 1))
 print(f"appcast.xml updated for Marmot {ver} (build {os.environ['BUILD_NUM']})")
 EOF

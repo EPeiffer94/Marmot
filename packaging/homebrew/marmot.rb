@@ -3,7 +3,7 @@
 # Regenerate for each release with: sh scripts/make-cask.sh
 cask "marmot" do
   version "2.6.0"
-  sha256 "9a20f5a59d5176ef1d77a2950e940a35a9b45b7c5e5c452b0a2830b74d465add"
+  sha256 "0eba3f1f35b2cd519c8bcece1c97ad6ed21a5590f281a47d430f85f286de6108"
 
   url "https://github.com/EPeiffer94/Marmot/releases/download/v#{version}/Marmot-#{version}.zip"
   name "Marmot"
