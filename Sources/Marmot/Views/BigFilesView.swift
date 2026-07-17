@@ -58,6 +58,13 @@ struct BigFilesView: View {
         .navigationSubtitle(scannedOnce
             ? "\(filtered.count) files — selected \(ByteFormat.string(selectedBytes))"
             : "")
+        .onReceive(NotificationCenter.default.publisher(for: .marmotBigFilesIntent)) { note in
+            let requestedSize = note.userInfo?["minSizeMB"] as? Int ?? 100
+            let requestedAge = note.userInfo?["minAgeDays"] as? Int ?? 0
+            minSizeMB = [5000, 1000, 500, 100].first { $0 <= max(requestedSize, 100) } ?? 100
+            minAgeDays = requestedAge >= 365 ? 365 : (requestedAge >= 180 ? 180 : 0)
+            if !scannedOnce && !scanning { startScan() }
+        }
     }
 
     // MARK: States

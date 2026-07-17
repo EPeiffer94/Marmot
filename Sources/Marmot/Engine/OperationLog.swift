@@ -108,7 +108,12 @@ struct FreedStats {
 extension OperationLog {
     /// Aggregates real (non-dry-run) removals from the history log.
     func freedStats(now: Date = Date()) -> FreedStats {
-        let removals = readAll().filter {
+        Self.aggregate(readAll(), now: now)
+    }
+
+    /// Pure aggregation — separated for testability.
+    static func aggregate(_ entries: [LogEntry], now: Date = Date()) -> FreedStats {
+        let removals = entries.filter {
             !$0.dryRun
                 && $0.outcome == ItemOutcome.done.rawValue
                 && ($0.action == ChangeAction.moveToTrash.rawValue

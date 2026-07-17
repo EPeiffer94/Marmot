@@ -29,9 +29,11 @@ struct AutopilotRule: Identifiable, Codable {
     /// A rule's first scheduled run is one full interval after creation —
     /// never immediately, so authoring a rule is never itself destructive.
     /// Use "Run Now" for an immediate run.
-    var isDue: Bool {
+    var isDue: Bool { isDue(at: Date()) }
+
+    func isDue(at date: Date) -> Bool {
         let reference = lastRun ?? createdAt ?? .distantPast
-        return isEnabled && reference.addingTimeInterval(frequency.interval) < Date()
+        return isEnabled && reference.addingTimeInterval(frequency.interval) < date
     }
 }
 

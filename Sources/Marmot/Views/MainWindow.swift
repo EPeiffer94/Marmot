@@ -61,6 +61,10 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 extension Notification.Name {
     /// Posted by the menu bar HUD's gear button to open Settings in-window.
     static let marmotOpenSettings = Notification.Name("marmot.openSettings")
+    /// Smart-palette deep link: userInfo minSizeMB/minAgeDays.
+    static let marmotBigFilesIntent = Notification.Name("marmot.bigFilesIntent")
+    /// Smart-palette deep link: userInfo appPath/reset.
+    static let marmotUninstallIntent = Notification.Name("marmot.uninstallIntent")
 }
 
 struct MainWindow: View {
@@ -123,13 +127,17 @@ struct MainWindow: View {
         .navigationTitle("Marmot")
         .background(
             // Hidden trigger so ⌘K works from anywhere in the window.
-            Button("") { showPalette = true }
-                .keyboardShortcut("k", modifiers: .command)
-                .hidden()
+            Button("") {
+                showPalette = true
+                AppInventory.shared.loadIfNeeded() // for "uninstall <app>" intents
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .hidden()
         )
         .overlay {
             if showPalette {
-                CommandPaletteView(items: paletteItems) { showPalette = false }
+                CommandPaletteView(items: paletteItems,
+                                   dynamicItems: dynamicPaletteItems) { showPalette = false }
             }
         }
         .sheet(isPresented: Binding(
@@ -186,6 +194,52 @@ struct MainWindow: View {
                     selection = .autopilot
                     Autopilot.shared.run(rule)
                 })
+        }
+        return items
+    }
+
+    /// Query-aware palette items: parsed intents ranked above the static list.
+    private func dynamicPaletteItems(for query: String) -> [PaletteItem] {
+        var items: [PaletteItem] = []
+
+        if let bigQuery = IntentParser.bigFilesQuery(from: query) {
+            let sizeText = bigQuery.minSizeMB >= 1000
+                ? "\(bigQuery.minSizeMB / 1000) GB+"
+                : "\(bigQuery.minSizeMB) MB+"
+            let ageText = bigQuery.minAgeDays >= 365 ? ", 1+ year old"
+                : (bigQuery.minAgeDays >= 180 ? ", 6+ months old" : "")
+            items.append(PaletteItem(
+                title: "Hunt files \(sizeText)\(ageText)",
+                subtitle: "Big Files with these filters applied",
+                icon: "externaldrive") {
+                    selection = .bigFiles
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        NotificationCenter.default.post(
+                            name: .marmotBigFilesIntent, object: nil,
+                            userInfo: ["minSizeMB": bigQuery.minSizeMB,
+                                       "minAgeDays": bigQuery.minAgeDays])
+                    }
+                })
+        }
+
+        if let action = IntentParser.appAction(from: query) {
+            let matches = AppInventory.shared.apps
+                .filter { $0.name.localizedCaseInsensitiveContains(action.name) }
+                .prefix(3)
+            for app in matches {
+                let reset = action.reset
+                items.append(PaletteItem(
+                    title: "\(reset ? "Reset" : "Uninstall") \(app.name)",
+                    subtitle: reset ? "Clear its data, keep the app" : "App + all leftovers, previewed first",
+                    icon: reset ? "arrow.counterclockwise" : "trash") {
+                        selection = .uninstall
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            NotificationCenter.default.post(
+                                name: .marmotUninstallIntent, object: nil,
+                                userInfo: ["appPath": app.id, "reset": reset])
+                        }
+                    })
+            }
         }
         return items
     }

@@ -69,6 +69,13 @@ struct UninstallView: View {
             }
         }
         .onAppear { inventory.loadIfNeeded() }
+        .onReceive(NotificationCenter.default.publisher(for: .marmotUninstallIntent)) { note in
+            guard let path = note.userInfo?["appPath"] as? String,
+                  let app = inventory.apps.first(where: { $0.id == path }) else { return }
+            search = ""
+            selectedApp = app
+            buildPlan(reset: (note.userInfo?["reset"] as? Bool) ?? false)
+        }
         .navigationSubtitle("\(inventory.apps.count) apps installed")
     }
 
