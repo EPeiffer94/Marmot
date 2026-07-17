@@ -149,7 +149,9 @@ struct CleanupView: View {
                 reviewCategories(Array(selectedCategoryIDs))
             } label: {
                 Label("Review Selected…", systemImage: "eye")
+                    .labelStyle(.titleAndIcon)
             }
+            .buttonStyle(.borderedProminent)
             .disabled(selectedCategoryIDs.isEmpty || model.scanning)
             .help("Opens the change preview for all selected categories. You can dry-run before applying.")
         }

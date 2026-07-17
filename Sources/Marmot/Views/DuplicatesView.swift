@@ -200,8 +200,10 @@ struct DuplicatesView: View {
             Button {
                 buildPlan()
             } label: {
-                Label("Review Removal…", systemImage: "eye")
+                Label("Review & Remove…", systemImage: "eye")
+                    .labelStyle(.titleAndIcon)
             }
+            .buttonStyle(.borderedProminent)
             .disabled(scanning || totalWasted == 0)
             .help("Preview the removal of all non-keeper copies. Trash-first and dry-runnable.")
         }
