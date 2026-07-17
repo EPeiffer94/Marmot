@@ -2,8 +2,8 @@
 # Lives in the tap repo: github.com/EPeiffer94/homebrew-marmot (Casks/marmot.rb)
 # Regenerate for each release with: sh scripts/make-cask.sh
 cask "marmot" do
-  version "2.4.0"
-  sha256 "0c73a49db36557f0b4f0d89aa387a5c2a4b145cfd0bf9bca449261a2038feac6"
+  version "2.5.0"
+  sha256 "096e91469c105b49fe574a98f8a44aeb271116761921f30df4dcf7fac16226c9"
 
   url "https://github.com/EPeiffer94/Marmot/releases/download/v#{version}/Marmot-#{version}.zip"
   name "Marmot"
@@ -21,10 +21,10 @@ cask "marmot" do
     "~/Library/Preferences/dev.marmot.app.plist",
   ]
 
-  caveats <<~EOS
+  caveats <<~CAVEATS
     Marmot is not notarized (free community software). On first launch:
     System Settings → Privacy & Security → "Open Anyway".
     Or clear quarantine directly:
       xattr -cr /Applications/Marmot.app
-  EOS
+  CAVEATS
 end
