@@ -120,13 +120,16 @@ Since 2.1.0, Marmot updates itself via [Sparkle](https://sparkle-project.org): i
 
 ```sh
 make release VERSION=x.y.z
-sh scripts/make-appcast-entry.sh Marmot-x.y.z.zip x.y.z
+sh scripts/make-appcast-entry.sh Marmot-x.y.z.zip x.y.z   # sign + appcast
+sh scripts/make-cask.sh                                   # refresh Homebrew cask
 git add -A && git commit -m "Release x.y.z" && git push
 git tag vx.y.z && git push origin vx.y.z
-# create the GitHub release, attach the zip (exact filename)
+# create the GitHub release, attach the zip (exact filename), then:
+cp packaging/homebrew/marmot.rb ../homebrew-marmot/Casks/marmot.rb
+cd ../homebrew-marmot && git commit -am "marmot x.y.z" && git push
 ```
 
-The signing key lives in the maintainer's Keychain — keep an exported backup safe.
+The signing key lives in the maintainer's Keychain — keep an exported backup safe. Existing users update via Sparkle regardless; the cask copy keeps *fresh* `brew` installs on the newest version.
 </details>
 
 ---
