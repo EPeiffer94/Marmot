@@ -20,7 +20,7 @@ final class LogicTests: XCTestCase {
         }
         let days = TrendStore.daysUntilFull(points: points)
         XCTAssertNotNil(days)
-        XCTAssertEqual(days ?? 0, 10, accuracy: 2)
+        XCTAssertTrue((8...12).contains(days ?? 0), "expected ~10 days, got \(String(describing: days))")
     }
 
     func testForecastFlatUsageReturnsNil() {
