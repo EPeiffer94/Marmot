@@ -12,7 +12,7 @@ cask "marmot" do
 
   # Marmot updates itself via Sparkle after install.
   auto_updates true
-  depends_on macos: ">= :ventura"
+  depends_on macos: :ventura
 
   app "Marmot.app"
 
