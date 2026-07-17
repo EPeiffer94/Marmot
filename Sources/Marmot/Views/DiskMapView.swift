@@ -16,6 +16,13 @@ struct DiskMapView: View {
     @State private var scanner: DiskScanner?
     @State private var hoveredNode: FileNode?
     @State private var folderMovers: FolderTrends.Movers?
+    @State private var showTimeTravel = false
+
+    /// Prefer the current scan root's history; fall back to any root that has one.
+    private var timeTravelRoot: String? {
+        if FolderTrends.shared.history(for: scanTarget).count >= 2 { return scanTarget }
+        return FolderTrends.shared.rootsWithHistory.first
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +54,14 @@ struct DiskMapView: View {
             PlanPreviewView(plan: plan, allowPurgeRoots: true) { result in
                 activePlan = nil
                 if let r = result, !r.dryRun { startScan() }
+            }
+        }
+        .sheet(isPresented: $showTimeTravel) {
+            if let root = timeTravelRoot {
+                TimeTravelView(root: root,
+                               snapshots: FolderTrends.shared.history(for: root)) {
+                    showTimeTravel = false
+                }
             }
         }
         .navigationSubtitle(currentNode.map { "\($0.path) — \(ByteFormat.string($0.sizeBytes))" } ?? "")
@@ -210,6 +225,15 @@ struct DiskMapView: View {
                 }
                 .pickerStyle(.segmented)
             }
+            Button {
+                showTimeTravel = true
+            } label: {
+                Label("Time Travel", systemImage: "clock.arrow.circlepath")
+            }
+            .disabled(timeTravelRoot == nil)
+            .help(timeTravelRoot == nil
+                ? "Scan a folder on two different days to unlock its timeline."
+                : "Scrub through this folder's size history.")
             Button {
                 pickFolder()
             } label: {

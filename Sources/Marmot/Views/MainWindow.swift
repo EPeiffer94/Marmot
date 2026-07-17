@@ -65,6 +65,8 @@ extension Notification.Name {
     static let marmotBigFilesIntent = Notification.Name("marmot.bigFilesIntent")
     /// Smart-palette deep link: userInfo appPath/reset.
     static let marmotUninstallIntent = Notification.Name("marmot.uninstallIntent")
+    /// An .app was dropped on the window or Dock icon: userInfo appPath.
+    static let marmotDroppedApp = Notification.Name("marmot.droppedApp")
 }
 
 struct MainWindow: View {
@@ -148,6 +150,32 @@ struct MainWindow: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .marmotOpenSettings)) { _ in
             selection = .settings
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .marmotDroppedApp)) { note in
+            guard let path = note.userInfo?["appPath"] as? String else { return }
+            selection = .uninstall
+            AppInventory.shared.loadIfNeeded()
+            // Give the Uninstaller a beat to mount before it receives the intent.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                NotificationCenter.default.post(
+                    name: .marmotUninstallIntent, object: nil,
+                    userInfo: ["appPath": path, "reset": false])
+            }
+        }
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            var handled = false
+            for provider in providers {
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let url, url.pathExtension == "app" else { return }
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(
+                            name: .marmotDroppedApp, object: nil,
+                            userInfo: ["appPath": url.path])
+                    }
+                }
+                handled = true
+            }
+            return handled
         }
     }
 

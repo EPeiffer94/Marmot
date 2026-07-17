@@ -4,6 +4,19 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Application</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.apple.application-bundle</string>
+            </array>
+        </dict>
+    </array>
     <key>CFBundleName</key>
     <string>Marmot</string>
     <key>CFBundleDisplayName</key>

@@ -10,6 +10,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UpdaterBridge.shared.start()
         Watchtower.shared.start()
     }
+
+    /// Apps dropped on the Dock icon arrive here (via CFBundleDocumentTypes).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls where url.pathExtension == "app" {
+            NSApp.activate(ignoringOtherApps: true)
+            NotificationCenter.default.post(
+                name: .marmotDroppedApp, object: nil,
+                userInfo: ["appPath": url.path])
+        }
+    }
 }
 
 @main

@@ -14,6 +14,7 @@ struct DashboardView: View {
     @State private var freedStats: FreedStats?
     @State private var suggestions: [Suggestion] = []
     @AppStorage(Prefs.supporter) private var supporter = false
+    @State private var showWrapped = false
     var onNavigate: (SidebarSection) -> Void
 
     var snap: SystemSnapshot { stats.snapshot }
@@ -47,6 +48,11 @@ struct DashboardView: View {
             refreshSuggestions()
         }
         .onChange(of: cleanup.lastScan) { _ in refreshSuggestions() }
+        .sheet(isPresented: $showWrapped) {
+            WrappedView(stats: Wrapped.stats(from: OperationLog.shared.readAll())) {
+                showWrapped = false
+            }
+        }
         .navigationSubtitle("Welcome to Marmot")
     }
 
@@ -102,8 +108,14 @@ struct DashboardView: View {
     private func reportCard(_ stats: FreedStats) -> some View {
         card(tint: .mint) {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Report Card", systemImage: "chart.bar.doc.horizontal")
-                    .font(.headline)
+                HStack {
+                    Label("Report Card", systemImage: "chart.bar.doc.horizontal")
+                        .font(.headline)
+                    Spacer()
+                    Button("Wrapped ✨") { showWrapped = true }
+                        .controlSize(.small)
+                        .help("Your cleaning stats as a shareable card.")
+                }
                 HStack(spacing: 28) {
                     reportStat("This week", stats.last7Days)
                     reportStat("Last 30 days", stats.last30Days)
