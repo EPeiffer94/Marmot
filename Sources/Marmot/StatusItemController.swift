@@ -94,7 +94,10 @@ final class StatusItemController: NSObject {
     }
 
     private func refreshTitle() {
-        statusItem?.button?.title = " \(latestCPU)%" + (junkAlerted ? " ⚠︎" : "")
+        // Figure-space pad (U+2007, digit-width) so 9% and 42% occupy the same
+        // width — the menu bar item no longer jumps when digits change.
+        let padded = latestCPU < 10 ? "\u{2007}\(latestCPU)" : "\(latestCPU)"
+        statusItem?.button?.title = " \(padded)%" + (junkAlerted ? " ⚠︎" : "")
     }
 
     private var hudEnabled: Bool {

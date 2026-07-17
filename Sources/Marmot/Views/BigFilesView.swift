@@ -157,8 +157,10 @@ struct BigFilesView: View {
             Button {
                 buildPlan()
             } label: {
-                Label("Review Removal…", systemImage: "eye")
+                Label("Review & Remove…", systemImage: "eye")
+                    .labelStyle(.titleAndIcon)
             }
+            .buttonStyle(.borderedProminent)
             .disabled(selection.isEmpty || scanning)
         }
     }
