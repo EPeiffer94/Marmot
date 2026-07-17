@@ -1,7 +1,7 @@
 APP_NAME = Marmot
 # Single source of truth for the version — stamped into the bundle's
 # Info.plist at build time. Override per-invocation: make release VERSION=x.y.z
-VERSION = 2.6.0
+VERSION = 2.7.0
 BUILD_NUM = $(shell git rev-list --count HEAD 2>/dev/null || echo 1)
 BUILD_DIR = .build/release
 BUNDLE = $(APP_NAME).app
