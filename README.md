@@ -6,11 +6,28 @@ Marmot cleans, uninstalls, automates, analyzes, and monitors your Mac — fourte
 
 Inspired by the wonderful [Mole CLI](https://github.com/tw93/mole), rebuilt from scratch in Swift/SwiftUI.
 
+<!-- SCREENSHOTS: uncomment once docs/screenshot-*.png exist
+![Marmot Dashboard](docs/screenshot-dashboard.png)
+
+<p align="center">
+  <img src="docs/screenshot-diskmap.png" width="49%" alt="Disk Map treemap" />
+  <img src="docs/screenshot-preview.png" width="49%" alt="Change plan preview with dry run" />
+</p>
+-->
+
 ---
 
-## 📦 Download (no Xcode needed)
+## 📦 Install
 
-Grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.com/EPeiffer94/Marmot/releases), unzip, and drag **Marmot.app** into **Applications**. From then on it updates itself — signed, verified, one click.
+**Homebrew** (recommended):
+
+```sh
+brew install --cask EPeiffer94/marmot/marmot
+```
+
+**Or manually:** grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.com/EPeiffer94/Marmot/releases), unzip, and drag **Marmot.app** into **Applications**.
+
+Either way, from then on Marmot updates itself — signed, verified, one click.
 
 **First launch only:** Marmot is free community software, not notarized through Apple's paid program, so macOS balks once. Double-click Marmot → click **OK** (not "Move to Trash"!) → **System Settings → Privacy & Security → "Open Anyway"** → confirm. That's the whole dance, forever. 💃
 
