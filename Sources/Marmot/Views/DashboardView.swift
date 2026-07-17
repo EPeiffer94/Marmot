@@ -289,6 +289,13 @@ struct DashboardView: View {
                     Spacer()
                 }
 
+                if let days = trends.forecastDaysUntilFull {
+                    Label("At this pace, the disk could fill in about \(days) day\(days == 1 ? "" : "s")",
+                          systemImage: "hourglass")
+                        .font(.caption)
+                        .foregroundStyle(.pink)
+                }
+
                 let movers = trends.movers()
                 if !movers.isEmpty {
                     HStack(spacing: 16) {

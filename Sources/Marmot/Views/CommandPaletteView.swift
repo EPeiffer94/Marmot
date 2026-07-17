@@ -12,17 +12,24 @@ struct PaletteItem: Identifiable {
 struct CommandPaletteView: View {
 
     let items: [PaletteItem]
+    var dynamicItems: (String) -> [PaletteItem] = { _ in [] }
     var onClose: () -> Void
 
     @State private var query = ""
     @FocusState private var searchFocused: Bool
 
     private var filtered: [PaletteItem] {
-        guard !query.isEmpty else { return items }
-        return items.filter {
-            $0.title.localizedCaseInsensitiveContains(query)
-                || $0.subtitle.localizedCaseInsensitiveContains(query)
+        let base: [PaletteItem]
+        if query.isEmpty {
+            base = items
+        } else {
+            base = items.filter {
+                $0.title.localizedCaseInsensitiveContains(query)
+                    || $0.subtitle.localizedCaseInsensitiveContains(query)
+            }
         }
+        // Parsed intents rank first so Enter runs them.
+        return dynamicItems(query) + base
     }
 
     var body: some View {

@@ -76,6 +76,41 @@ final class TrendStore: ObservableObject {
         return Array(changes.prefix(limit))
     }
 
+    // MARK: - Forecast
+
+    var forecastDaysUntilFull: Int? {
+        Self.daysUntilFull(points: points)
+    }
+
+    /// Naive linear forecast: least-squares slope of disk usage over the last
+    /// two weeks of snapshots, projected until free space hits zero. Returns
+    /// nil without enough signal (≥5 points spanning ≥6 days, rising usage,
+    /// and a result inside 1–365 days).
+    static func daysUntilFull(points: [TrendPoint], now: Date = Date()) -> Int? {
+        let recent = Array(points.suffix(14))
+        guard recent.count >= 5,
+              let first = recent.first, let last = recent.last,
+              last.date.timeIntervalSince(first.date) >= 6 * 86_400,
+              last.diskFree > 0 else { return nil }
+
+        let base = first.date.timeIntervalSince1970
+        let xs = recent.map { $0.date.timeIntervalSince1970 - base }
+        let ys = recent.map { Double($0.diskUsed) }
+        let n = Double(xs.count)
+        let sumX = xs.reduce(0, +)
+        let sumY = ys.reduce(0, +)
+        let sumXY = zip(xs, ys).reduce(0) { $0 + $1.0 * $1.1 }
+        let sumXX = xs.reduce(0) { $0 + $1 * $1 }
+        let denominator = n * sumXX - sumX * sumX
+        guard denominator != 0 else { return nil }
+
+        let slope = (n * sumXY - sumX * sumY) / denominator // bytes/second
+        guard slope > 0 else { return nil }
+
+        let days = Int(Double(last.diskFree) / slope / 86_400)
+        return (1...365).contains(days) ? days : nil
+    }
+
     // MARK: - Persistence
 
     private func load() {
