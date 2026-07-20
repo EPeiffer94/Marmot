@@ -87,9 +87,11 @@ final class SafetyRulesTests: XCTestCase {
             home + "/Library/Caches/x/../../../Documents/taxes.pdf",
             home + "/Library/Caches/..",
             "/..",
-            // Double slashes break prefix matching — must not sneak in.
+            // Separator games. "//" collapses to "/" on disk, so a doubled
+            // slash is not an escape route — but one aimed at somebody
+            // else's home or at a protected area must still be refused.
             "//Users/anyone/Library/Caches/x",
-            home + "//Library/Caches/x",
+            home + "//Library/Keychains/login.keychain-db",
             // Case tricks: APFS is case-insensitive but the allowlist is the
             // final gate, so a case-mangled path must simply not match it.
             home.uppercased() + "/LIBRARY/CACHES/X",
