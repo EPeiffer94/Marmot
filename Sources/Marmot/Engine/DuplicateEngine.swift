@@ -31,14 +31,24 @@ final class DuplicateEngine {
         "imovielibrary", "fcpbundle"
     ]
 
+    /// Progress phases surfaced to the UI: a live tally while cataloguing,
+    /// then a determinate count while hashing.
+    enum ScanPhase {
+        case collecting(files: Int)
+        case comparing(done: Int, total: Int)
+    }
+
     var isCancelled = false
     var onProgress: ((String) -> Void)?
+    var onPhase: ((ScanPhase) -> Void)?
+    private var candidateFiles = 0
 
     func scan(roots: [String]) -> [DuplicateGroup] {
         // Size → (path, device:inode). The file ID lets us skip hardlinked
         // twins: removing one hardlink to the same file frees no space.
         var bySize: [Int64: [(path: String, fileID: String)]] = [:]
 
+        candidateFiles = 0
         for root in roots {
             if isCancelled { return [] }
             collectCandidates(root: root, into: &bySize)
@@ -55,13 +65,19 @@ final class DuplicateEngine {
             candidates.append(contentsOf: unique.map { (size, $0.path) })
         }
         guard !candidates.isEmpty else { return [] }
+        onPhase?(.comparing(done: 0, total: candidates.count))
 
+        let hashed = LockedCounter()
         var keyed = [(key: String, file: DuplicateFile)?](repeating: nil, count: candidates.count)
         keyed.withUnsafeMutableBufferPointer { buffer in
             DispatchQueue.concurrentPerform(iterations: candidates.count) { index in
                 if isCancelled { return }
                 let candidate = candidates[index]
                 onProgress?(candidate.path)
+                let done = hashed.increment()
+                if done % 16 == 0 || done == candidates.count {
+                    onPhase?(.comparing(done: done, total: candidates.count))
+                }
                 guard let hash = Self.contentKey(path: candidate.path, size: candidate.size) else { return }
                 buffer[index] = (
                     key: "\(candidate.size):\(hash)",
@@ -119,6 +135,10 @@ final class DuplicateEngine {
             guard size >= Self.minFileSize else { continue }
             bySize[size, default: []].append(
                 (path: path, fileID: "\(st.pointee.st_dev):\(st.pointee.st_ino)"))
+            candidateFiles += 1
+            if candidateFiles % 128 == 0 {
+                onPhase?(.collecting(files: candidateFiles))
+            }
         }
     }
 
@@ -186,5 +206,19 @@ final class DuplicateEngine {
             }
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// Thread-safe counter for progress reporting from concurrentPerform.
+/// A locked class avoids mutating a captured var from concurrent code.
+private final class LockedCounter {
+    private let lock = NSLock()
+    private var value = 0
+
+    func increment() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        value += 1
+        return value
     }
 }

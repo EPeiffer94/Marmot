@@ -9,6 +9,8 @@ struct BigFilesView: View {
     @State private var scanning = false
     @State private var scannedOnce = false
     @State private var progressPath = ""
+    @State private var foundCount = 0
+    @State private var foundBytes: Int64 = 0
     @State private var scanner: BigFileScanner?
     @State private var selection: Set<BigFile.ID> = []
     @State private var sortOrder = [KeyPathComparator(\BigFile.sizeBytes, order: .reverse)]
@@ -82,7 +84,12 @@ struct BigFilesView: View {
     private var scanningState: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text("Hunting big files…").font(.callout)
+            Text(foundCount > 0
+                 ? "Found \(foundCount) big files — \(ByteFormat.string(foundBytes)) so far"
+                 : "Hunting big files…")
+                .font(.callout.monospacedDigit())
+                .contentTransition(.numericText())
+                .animation(.default, value: foundCount)
             Text(progressPath)
                 .font(.caption.monospaced())
                 .foregroundStyle(.tertiary)
@@ -171,10 +178,18 @@ struct BigFilesView: View {
         scanning = true
         scannedOnce = true
         selection = []
+        foundCount = 0
+        foundBytes = 0
         let s = BigFileScanner()
         scanner = s
         s.onProgress = { path in
             DispatchQueue.main.async { progressPath = path }
+        }
+        s.onFound = { count, bytes in
+            DispatchQueue.main.async {
+                foundCount = count
+                foundBytes = bytes
+            }
         }
         Task { @MainActor in
             files = await Task.detached(priority: .userInitiated) {

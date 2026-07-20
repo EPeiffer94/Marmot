@@ -67,13 +67,37 @@ extension Notification.Name {
     static let marmotUninstallIntent = Notification.Name("marmot.uninstallIntent")
     /// An .app was dropped on the window or Dock icon: userInfo appPath.
     static let marmotDroppedApp = Notification.Name("marmot.droppedApp")
+    /// A plan was applied for real: userInfo result (ExecutionResult).
+    static let marmotPlanApplied = Notification.Name("marmot.planApplied")
+}
+
+/// Transient bottom toast after a real (non-dry-run) clean.
+struct FreedToast: Identifiable {
+    let id = UUID()
+    var freed: Int64 = 0
+    var restorables: [ItemResult] = []
+    var restoredMessage: String?
 }
 
 struct MainWindow: View {
-    @State private var selection: SidebarSection? = .dashboard
+    @State private var selection: SidebarSection?
     @State private var showPalette = false
+    @State private var dropTargeted = false
+    @State private var toast: FreedToast?
     @EnvironmentObject var stats: StatsSampler
     @AppStorage(Prefs.onboarded) private var onboarded = false
+
+    /// ⌘1–⌘9 jump to the first nine sections in sidebar order.
+    private static let quickSections: [SidebarSection] = [
+        .dashboard, .cleanup, .autopilot, .duplicates, .bigFiles,
+        .uninstall, .unusedApps, .updates, .diskMap
+    ]
+
+    init() {
+        // Launch memory: reopen on the section you were last using.
+        let saved = UserDefaults.standard.string(forKey: Prefs.lastSection)
+        _selection = State(initialValue: saved.flatMap(SidebarSection.init(rawValue:)) ?? .dashboard)
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -128,18 +152,45 @@ struct MainWindow: View {
         .tint(Theme.accent)
         .navigationTitle("Marmot")
         .background(
-            // Hidden trigger so ⌘K works from anywhere in the window.
-            Button("") {
-                showPalette = true
-                AppInventory.shared.loadIfNeeded() // for "uninstall <app>" intents
+            // Hidden triggers: ⌘K palette + ⌘1–9 section jumps.
+            Group {
+                Button("") {
+                    showPalette = true
+                    AppInventory.shared.loadIfNeeded() // for "uninstall <app>" intents
+                }
+                .keyboardShortcut("k", modifiers: .command)
+                ForEach(Array(Self.quickSections.enumerated()), id: \.offset) { index, section in
+                    Button("") { selection = section }
+                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+                }
             }
-            .keyboardShortcut("k", modifiers: .command)
             .hidden()
         )
+        .onChange(of: selection) { newValue in
+            guard let newValue else { return }
+            UserDefaults.standard.set(newValue.rawValue, forKey: Prefs.lastSection)
+        }
         .overlay {
             if showPalette {
                 CommandPaletteView(items: paletteItems,
                                    dynamicItems: dynamicPaletteItems) { showPalette = false }
+            }
+        }
+        .overlay {
+            if dropTargeted { dropOverlay }
+        }
+        .overlay(alignment: .bottom) {
+            if let toast {
+                toastView(toast)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .task(id: toast?.id) {
+            // Toasts dismiss themselves after a few seconds.
+            guard toast != nil else { return }
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            if !Task.isCancelled {
+                withAnimation(.easeOut(duration: 0.25)) { toast = nil }
             }
         }
         .sheet(isPresented: Binding(
@@ -162,7 +213,17 @@ struct MainWindow: View {
                     userInfo: ["appPath": path, "reset": false])
             }
         }
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+        .onReceive(NotificationCenter.default.publisher(for: .marmotPlanApplied)) { note in
+            guard let result = note.userInfo?["result"] as? ExecutionResult,
+                  result.freedBytes > 0 else { return }
+            let restorables = result.results.filter {
+                $0.trashedTo != nil && $0.outcome == .done
+            }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                toast = FreedToast(freed: result.freedBytes, restorables: restorables)
+            }
+        }
+        .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
             var handled = false
             for provider in providers {
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -270,6 +331,86 @@ struct MainWindow: View {
             }
         }
         return items
+    }
+
+    // MARK: Drop overlay + freed toast
+
+    /// Shown while an .app is being dragged over the window.
+    private var dropOverlay: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Theme.accent.opacity(0.08))
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Theme.accent.opacity(0.55),
+                              style: StrokeStyle(lineWidth: 2.5, dash: [10, 7]))
+            VStack(spacing: 10) {
+                Image(systemName: "trash.square")
+                    .font(.system(size: 46, weight: .light))
+                    .foregroundStyle(Theme.accent)
+                Text("Drop to uninstall")
+                    .font(.title3.weight(.semibold))
+                Text("Full removal preview first — nothing happens without your OK")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(24)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        }
+        .padding(14)
+        .allowsHitTesting(false)
+    }
+
+    private func toastView(_ toast: FreedToast) -> some View {
+        HStack(spacing: 12) {
+            if let restored = toast.restoredMessage {
+                Image(systemName: "arrow.uturn.backward.circle.fill")
+                    .foregroundStyle(.blue)
+                Text(restored)
+                    .font(.callout.weight(.medium))
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("Freed \(ByteFormat.string(toast.freed))")
+                    .font(.callout.weight(.semibold).monospacedDigit())
+                if !toast.restorables.isEmpty {
+                    Button("Undo") { undoToast(toast) }
+                        .buttonStyle(.link)
+                        .help("Moves everything from this clean back out of the Trash.")
+                }
+            }
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) { self.toast = nil }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.18)))
+        .padding(.bottom, 16)
+    }
+
+    private func undoToast(_ current: FreedToast) {
+        var restored = 0
+        for result in current.restorables {
+            guard let from = result.trashedTo else { continue }
+            if TrashRestore.restore(target: result.item.target, from: from) == nil {
+                restored += 1
+            }
+        }
+        let text: String
+        if restored == 0 {
+            text = "Nothing could be restored — the Trash may have been emptied."
+        } else {
+            text = "Restored \(restored) item\(restored == 1 ? "" : "s") from the Trash."
+        }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            toast = FreedToast(freed: current.freed, restoredMessage: text)
+        }
     }
 
     private var sidebarFooter: some View {

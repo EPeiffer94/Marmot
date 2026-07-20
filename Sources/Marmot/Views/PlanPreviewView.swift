@@ -253,8 +253,18 @@ struct PlanPreviewView: View {
                     Button("Close") { dismiss(); onDismiss(result) }
                 } else {
                     Spacer()
-                    Button("Done") { dismiss(); onDismiss(result) }
-                        .keyboardShortcut(.defaultAction)
+                    Button("Done") {
+                        // Let the main window show the freed-space toast
+                        // (with Undo) once the sheet is out of the way.
+                        if result.freedBytes > 0 {
+                            NotificationCenter.default.post(
+                                name: .marmotPlanApplied, object: nil,
+                                userInfo: ["result": result])
+                        }
+                        dismiss()
+                        onDismiss(result)
+                    }
+                    .keyboardShortcut(.defaultAction)
                 }
             }
         }
