@@ -26,5 +26,9 @@ enum Prefs {
     /// Startup Sentinel's baseline of known launchd plist paths.
     static let sentinelKnown = "marmot.sentinelKnown"
     /// Accent color name (pink/green/blue/mint/teal/cyan); empty = default.
-    static let accent = "marmot.accent"
+    /// NOTE: deliberately NOT dot-namespaced — @AppStorage observes
+    /// UserDefaults via KVO, and KVO treats dots as keypath separators, so
+    /// cross-view updates for dotted keys never fire. This key is written in
+    /// Settings and read in MainWindow, so it must be a single component.
+    static let accent = "marmotAccent"
 }

@@ -217,6 +217,7 @@ struct DuplicatesView: View {
                     .labelStyle(.titleAndIcon)
             }
             .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
             .disabled(scanning || totalWasted == 0)
             .help("Preview the removal of all non-keeper copies. Trash-first and dry-runnable.")
         }

@@ -152,6 +152,7 @@ struct CleanupView: View {
                     .labelStyle(.titleAndIcon)
             }
             .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
             .disabled(selectedCategoryIDs.isEmpty || model.scanning)
             .help("Opens the change preview for all selected categories. You can dry-run before applying.")
         }
