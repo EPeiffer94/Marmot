@@ -55,6 +55,29 @@ And even then: removals are **trash-first** (recoverable — and restorable stra
 
 ---
 
+## ⚖️ How Marmot compares
+
+| | 🐿️ **Marmot** | CleanMyMac | AppCleaner | DaisyDisk |
+|---|:---:|:---:|:---:|:---:|
+| **Price** | Free forever | Paid (subscription or one-time) | Free | Paid (one-time) |
+| **Open source** | ✅ MIT | ❌ | ❌ | ❌ |
+| **Dry-run rehearsal** (simulate first, touch nothing) | ✅ | ❌ | ❌ | ❌ |
+| **One-click Undo** + restore from History | ✅ | ❌ | ❌ | ❌ |
+| **Uninstaller** with leftover hunting | ✅ | ✅ | ✅ | ❌ |
+| **Duplicate finder** (hash-verified) | ✅ | ❌ ¹ | ❌ | ❌ |
+| **Big-file hunter** | ✅ | ✅ | ❌ | ✅ |
+| **Disk treemap** | ✅ | ✅ | ❌ | ✅ |
+| **Disk Time Travel** (scrub folder history) | ✅ | ❌ | ❌ | ❌ |
+| **Scheduled auto-clean rules** | ✅ | ❌ | ❌ | ❌ |
+| **App update checker** (brew + Sparkle + App Store) | ✅ | ✅ | ❌ | ❌ |
+| **Menu bar system monitor** | ✅ | ✅ | ❌ | ❌ |
+
+¹ Sold separately as a second paid app.
+
+*Based on publicly listed features as of July 2026 — competitors evolve, and each is good at what it does. Spotted an error? PRs welcome.*
+
+---
+
 ## 🧰 What's inside
 
 **🏠 Dashboard** — system health, reclaimable space with one-button **Smart Scan**, storage trends over time, and a suggestions feed that connects the dots ("12 GB of developer junk", "3 apps untouched for a year"). Press **⌘K** anywhere for the command palette.
