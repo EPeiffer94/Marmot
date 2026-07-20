@@ -6,8 +6,20 @@ import SwiftUI
 /// feel comes from low-opacity gradient washes rather than hardcoded tints.
 enum Theme {
 
-    /// Global accent — soft mint, applied at the window root.
-    static let accent = Color.mint
+    /// Global accent — soft mint by default, user-selectable in Settings
+    /// (restricted to the signature pastels, of course).
+    static var accent: Color {
+        named(UserDefaults.standard.string(forKey: Prefs.accent) ?? "") ?? .mint
+    }
+
+    static let accentChoices: [(name: String, color: Color)] = [
+        ("mint", .mint), ("green", .green), ("teal", .teal),
+        ("cyan", .cyan), ("blue", .blue), ("pink", .pink)
+    ]
+
+    static func named(_ name: String) -> Color? {
+        accentChoices.first { $0.name == name }?.color
+    }
 
     /// Palette is deliberately restricted to pink, green, blue (and their
     /// soft relatives mint/teal/cyan) over white — Marmot's signature scheme.

@@ -154,6 +154,20 @@ final class LogicTests: XCTestCase {
                                                  hasAutopilotRules: false, now: now))
     }
 
+    // MARK: - Startup Sentinel diffing
+
+    func testSentinelNewArrivals() {
+        let known = ["/L/A/com.known.one.plist", "/L/A/com.known.two.plist"]
+        let current = ["/L/A/com.known.one.plist", "/L/A/com.sneaky.new.plist"]
+        XCTAssertEqual(StartupSentinel.newArrivals(current: current, known: known),
+                       ["/L/A/com.sneaky.new.plist"])
+        // Nothing new → empty. Removed items are not "arrivals".
+        XCTAssertTrue(StartupSentinel.newArrivals(current: known, known: known).isEmpty)
+        XCTAssertTrue(StartupSentinel.newArrivals(current: [], known: known).isEmpty)
+        // Everything is new against an empty baseline.
+        XCTAssertEqual(StartupSentinel.newArrivals(current: current, known: []).count, 2)
+    }
+
     // MARK: - Receipt family matching
 
     func testReceiptFamilyMatch() {

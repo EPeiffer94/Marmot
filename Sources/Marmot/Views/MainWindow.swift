@@ -86,6 +86,7 @@ struct MainWindow: View {
     @State private var toast: FreedToast?
     @EnvironmentObject var stats: StatsSampler
     @AppStorage(Prefs.onboarded) private var onboarded = false
+    @AppStorage(Prefs.accent) private var accentName = ""
 
     /// ⌘1–⌘9 jump to the first nine sections in sidebar order.
     private static let quickSections: [SidebarSection] = [
@@ -149,7 +150,7 @@ struct MainWindow: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .tint(Theme.accent)
+        .tint(Theme.named(accentName) ?? .mint)
         .navigationTitle("Marmot")
         .background(
             // Hidden triggers: ⌘K palette + ⌘1–9 section jumps.
