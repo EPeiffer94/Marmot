@@ -168,6 +168,7 @@ struct BigFilesView: View {
                     .labelStyle(.titleAndIcon)
             }
             .buttonStyle(.borderedProminent)
+            .tint(Theme.accent)
             .disabled(selection.isEmpty || scanning)
         }
     }

@@ -22,6 +22,8 @@ struct SettingsView: View {
                 .tabItem { Label("Support", systemImage: "heart") }
         }
         .frame(width: 520, height: 380)
+        // Covers the standalone ⌘, window too (it's outside MainWindow's tint).
+        .tint(Theme.named(accentName) ?? .mint)
     }
 
     @AppStorage(Prefs.supporter) private var supporter = false
