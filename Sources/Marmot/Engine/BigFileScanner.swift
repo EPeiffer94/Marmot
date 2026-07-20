@@ -22,9 +22,12 @@ final class BigFileScanner {
 
     var isCancelled = false
     var onProgress: ((String) -> Void)?
+    /// Running tally: (files found so far, total bytes so far).
+    var onFound: ((Int, Int64) -> Void)?
 
     func scan(root: String) -> [BigFile] {
         var results: [BigFile] = []
+        var foundBytes: Int64 = 0
 
         guard let dup = strdup(root) else { return [] }
         let argv = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: 2)
@@ -63,6 +66,8 @@ final class BigFileScanner {
                 path: path,
                 sizeBytes: size,
                 modified: Date(timeIntervalSince1970: TimeInterval(st.pointee.st_mtimespec.tv_sec))))
+            foundBytes += size
+            onFound?(results.count, foundBytes)
         }
         return results.sorted { $0.sizeBytes > $1.sizeBytes }
     }

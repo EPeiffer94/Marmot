@@ -114,24 +114,11 @@ struct HistoryView: View {
 
     private func restore(_ entry: LogEntry) {
         guard let from = entry.trashedTo else { return }
-        let fm = FileManager.default
-        let name = (entry.target as NSString).lastPathComponent
-        guard fm.fileExists(atPath: from) else {
-            message = "\(name) is no longer in the Trash — it may have been emptied."
-            return
-        }
-        guard !fm.fileExists(atPath: entry.target) else {
-            message = "Something already exists at the original location of \(name)."
-            return
-        }
-        do {
-            try fm.createDirectory(atPath: (entry.target as NSString).deletingLastPathComponent,
-                                   withIntermediateDirectories: true)
-            try fm.moveItem(atPath: from, toPath: entry.target)
+        if let failure = TrashRestore.restore(target: entry.target, from: from) {
+            message = failure
+        } else {
             restoredIDs.insert(entry.id)
-            message = "Restored \(name) to its original location."
-        } catch {
-            message = "Restore failed: \(error.localizedDescription)"
+            message = "Restored \((entry.target as NSString).lastPathComponent) to its original location."
         }
     }
 }

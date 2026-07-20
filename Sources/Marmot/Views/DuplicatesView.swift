@@ -12,6 +12,7 @@ struct DuplicatesView: View {
     @State private var scanning = false
     @State private var scannedOnce = false
     @State private var progressPath = ""
+    @State private var phase: DuplicateEngine.ScanPhase?
     @State private var roots: [String] = [
         NSHomeDirectory() + "/Downloads",
         NSHomeDirectory() + "/Documents",
@@ -74,8 +75,20 @@ struct DuplicatesView: View {
 
     private var scanningState: some View {
         VStack(spacing: 12) {
-            ProgressView()
-            Text("Hashing candidates…").font(.callout)
+            switch phase {
+            case .comparing(let done, let total):
+                ProgressView(value: Double(done), total: Double(max(total, 1)))
+                    .frame(width: 320)
+                Text("Comparing \(done) of \(total) candidates…")
+                    .font(.callout.monospacedDigit())
+            case .collecting(let files):
+                ProgressView()
+                Text("Cataloguing files… \(files) candidates so far")
+                    .font(.callout.monospacedDigit())
+            case nil:
+                ProgressView()
+                Text("Cataloguing files…").font(.callout)
+            }
             Text(progressPath)
                 .font(.caption.monospaced())
                 .foregroundStyle(.tertiary)
@@ -227,16 +240,28 @@ struct DuplicatesView: View {
         groups = []
         keepers = [:]
         includedGroups = []
+        phase = nil
         let e = DuplicateEngine()
         engine = e
         e.onProgress = { path in
             DispatchQueue.main.async { progressPath = path }
         }
+        e.onPhase = { p in
+            DispatchQueue.main.async { phase = p }
+        }
         let scanRoots = roots.filter { FileManager.default.fileExists(atPath: $0) }
         Task { @MainActor in
             let found = await Task.detached(priority: .userInitiated) { e.scan(roots: scanRoots) }.value
-            groups = found
-            includedGroups = Set(found.map(\.id))
+            if e.isCancelled {
+                // Cancelled: return to the start screen, not a misleading
+                // "no duplicates found" empty state.
+                scannedOnce = false
+            } else {
+                groups = found
+                includedGroups = Set(found.map(\.id))
+            }
+            phase = nil
+            progressPath = ""
             scanning = false
         }
     }

@@ -19,4 +19,6 @@ enum Prefs {
     static let watchtowerDays = "marmot.watchtowerDays"
     /// Unix timestamp of the last Watchtower check.
     static let watchtowerLastCheck = "marmot.watchtowerLastCheck"
+    /// Last selected sidebar section — restored on launch.
+    static let lastSection = "marmot.lastSection"
 }
