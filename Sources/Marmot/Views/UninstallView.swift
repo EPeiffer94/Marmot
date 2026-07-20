@@ -160,9 +160,9 @@ struct UninstallView: View {
                 let paths = [app.path] + plan.items
                     .filter { $0.action == .moveToTrash && $0.target != app.path }
                     .map(\.target)
-                let quoted = paths.map { "\"\($0)\"" }.joined(separator: " ")
+                let quoted = paths.map { Shell.quoted($0) }.joined(separator: " ")
                 prefix.append(ChangeItem(
-                    target: "/usr/bin/zip -qry \"\(destination.path)\" \(quoted)",
+                    target: "/usr/bin/zip -qry \(Shell.quoted(destination.path)) \(quoted)",
                     action: .runCommand,
                     note: "Archives the app and all its data to \(destination.lastPathComponent) before anything is removed.",
                     group: "Time Capsule"))

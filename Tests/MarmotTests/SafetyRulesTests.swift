@@ -78,4 +78,57 @@ final class SafetyRulesTests: XCTestCase {
         let plan = ChangePlan(title: "t", source: "s", items: [item])
         XCTAssertFalse(plan.items[0].isSelected)
     }
+
+    // MARK: Hostile paths — the gate must fail closed on every trick
+
+    func testHostilePathsAreRefused() {
+        let hostile = [
+            // Traversal variants anywhere in the path.
+            home + "/Library/Caches/x/../../../Documents/taxes.pdf",
+            home + "/Library/Caches/..",
+            "/..",
+            // Double slashes break prefix matching — must not sneak in.
+            "//Users/anyone/Library/Caches/x",
+            home + "//Library/Caches/x",
+            // Case tricks: APFS is case-insensitive but the allowlist is the
+            // final gate, so a case-mangled path must simply not match it.
+            home.uppercased() + "/LIBRARY/CACHES/X",
+            // Whitespace and control characters.
+            " ",
+            "\n",
+            home + "/Library/Caches/x\0y",
+            // Tilde must not expand into an allowed area from a crafted string.
+            "~/Library/Caches/../../Documents/x",
+            // Volume roots and shallow paths.
+            "/Volumes",
+            "/Volumes/Backup",
+            "/tmp"
+        ]
+        for path in hostile {
+            XCTAssertFalse(SafetyRules.isSafeToRemove(path), "should refuse hostile: \(path.debugDescription)")
+            XCTAssertFalse(SafetyRules.isSafeToRemove(path, allowPurgeRoots: true, allowUserFiles: true),
+                           "should refuse hostile even fully unlocked: \(path.debugDescription)")
+        }
+    }
+
+    func testShellQuotingNeutralizesMetacharacters() {
+        // A filename crafted to escape quoting must come back inert.
+        let evil = "x'; rm -rf ~; echo '$(whoami)`id`\""
+        let quoted = Shell.quoted(evil)
+        // Single-quoted except for escaped single quotes; no unescaped quote
+        // can terminate the string early.
+        XCTAssertTrue(quoted.hasPrefix("'") && quoted.hasSuffix("'"))
+        XCTAssertFalse(quoted.contains("''';"))
+
+        let script = Shell.appleScriptString("App \"Name\" \\ test")
+        XCTAssertEqual(script, "\"App \\\"Name\\\" \\\\ test\"")
+    }
+
+    func testWhitelistPrefixMatchingIsExact() {
+        // "/a/b" whitelisted must protect "/a/b/c" but NOT "/a/bc".
+        SafetyRules.whitelist = [home + "/Library/Caches/keepme"]
+        defer { SafetyRules.whitelist = [] }
+        XCTAssertTrue(SafetyRules.isWhitelisted(home + "/Library/Caches/keepme/sub/file"))
+        XCTAssertFalse(SafetyRules.isWhitelisted(home + "/Library/Caches/keepmeNot"))
+    }
 }

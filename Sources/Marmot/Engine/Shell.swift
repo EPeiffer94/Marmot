@@ -67,6 +67,20 @@ enum Shell {
         run("/bin/zsh", ["-c", command], timeout: timeout)
     }
 
+    /// POSIX single-quote escaping — the ONLY safe way to splice a filename
+    /// into a shell line. Inside single quotes nothing expands; embedded
+    /// single quotes become '\'' (close, escaped quote, reopen).
+    static func quoted(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    /// An AppleScript string literal with backslashes and quotes escaped.
+    static func appleScriptString(_ s: String) -> String {
+        "\"" + s
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"") + "\""
+    }
+
     /// Run with administrator privileges. macOS shows the standard auth prompt.
     @discardableResult
     static func runAdmin(_ command: String) -> Output {

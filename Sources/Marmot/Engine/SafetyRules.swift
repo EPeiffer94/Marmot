@@ -96,8 +96,11 @@ enum SafetyRules {
                                allowUserFiles: Bool = false) -> Bool {
         let p = normalize(path)
 
-        // Basic sanity.
-        guard p.hasPrefix("/"), !p.contains(".."), p.count > 1 else { return false }
+        // Basic sanity. NUL bytes are rejected outright: a path truncated at
+        // an embedded NUL by a C API could name a different file than the one
+        // that was previewed and validated.
+        guard p.hasPrefix("/"), !p.contains(".."), p.count > 1,
+              !p.contains("\0") else { return false }
         // Never the home dir, a volume root, or anything shallower than 3 components.
         let components = p.split(separator: "/")
         guard components.count >= 3 else { return false }
