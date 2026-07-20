@@ -85,7 +85,8 @@ enum StartupEngine {
         switch item.kind {
         case .loginItem:
             items.append(ChangeItem(
-                target: "osascript -e 'tell application \"System Events\" to delete login item \"\(item.name)\"'",
+                target: "osascript -e " + Shell.quoted(
+                    "tell application \"System Events\" to delete login item \(Shell.appleScriptString(item.name))"),
                 action: .runCommand,
                 risk: .low,
                 note: "Removes the login item entry only — the app itself stays installed.",
@@ -94,7 +95,7 @@ enum StartupEngine {
         case .userAgent:
             guard let path = item.plistPath else { break }
             items.append(ChangeItem(
-                target: "launchctl bootout gui/$UID \"\(path)\" 2>/dev/null; true",
+                target: "launchctl bootout gui/$UID \(Shell.quoted(path)) 2>/dev/null; true",
                 action: .runCommand,
                 risk: .low,
                 note: "Stops the agent if it is currently running.",
@@ -110,7 +111,7 @@ enum StartupEngine {
         case .systemAgent, .systemDaemon:
             guard let path = item.plistPath else { break }
             items.append(ChangeItem(
-                target: "launchctl bootout system \"\(path)\" 2>/dev/null; mv \"\(path)\" \"$HOME/.Trash/\"",
+                target: "launchctl bootout system \(Shell.quoted(path)) 2>/dev/null; mv \(Shell.quoted(path)) \"$HOME/.Trash/\"",
                 action: .runAdminCommand,
                 risk: .medium,
                 note: "Stops the item and moves its configuration to your Trash (recoverable). The app it belongs to is not deleted.",

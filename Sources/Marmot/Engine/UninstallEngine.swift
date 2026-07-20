@@ -118,7 +118,7 @@ enum UninstallEngine {
     /// Quit step used before uninstall/reset when the app is running.
     static func quitItem(for app: InstalledApp) -> ChangeItem {
         ChangeItem(
-            target: "osascript -e 'tell application \"\(app.name)\" to quit'",
+            target: "osascript -e " + Shell.quoted("tell application \(Shell.appleScriptString(app.name)) to quit"),
             action: .runCommand,
             note: "Quits \(app.name) first so its files aren't in use.",
             group: "Before starting")
@@ -180,7 +180,7 @@ enum UninstallEngine {
                 guard name.hasPrefix(idLower) || name.contains(idLower) else { continue }
                 if action == .runAdminCommand {
                     items.append(ChangeItem(
-                        target: "launchctl bootout system \"\(path)\" 2>/dev/null; rm -f \"\(path)\"",
+                        target: "launchctl bootout system \(Shell.quoted(path)) 2>/dev/null; rm -f \(Shell.quoted(path))",
                         action: .runAdminCommand,
                         sizeBytes: FileSizer.size(of: path),
                         risk: .medium,
