@@ -6,14 +6,16 @@ Marmot cleans, uninstalls, automates, analyzes, and monitors your Mac — fourte
 
 Inspired by the wonderful [Mole CLI](https://github.com/tw93/mole), rebuilt from scratch in Swift/SwiftUI.
 
-<!-- SCREENSHOTS: uncomment once docs/screenshot-*.png exist
-![Marmot Dashboard](docs/screenshot-dashboard.png)
+![Marmot Dashboard — system health, reclaimable space, report card, and storage trends](docs/screenshot-dashboard.jpeg)
 
 <p align="center">
-  <img src="docs/screenshot-diskmap.png" width="49%" alt="Disk Map treemap" />
-  <img src="docs/screenshot-preview.png" width="49%" alt="Change plan preview with dry run" />
+  <img src="docs/screenshot-diskmap.png" width="49%" alt="Disk Map treemap with since-last-scan folder diffing" />
+  <img src="docs/screenshot-cleanup.png" width="49%" alt="Cleanup categories with review-first cleaning" />
 </p>
--->
+<p align="center">
+  <img src="docs/screenshot-maintenance.png" width="49%" alt="Maintenance tasks with risk and admin badges" />
+  <img src="docs/screenshot-status.png" width="49%" alt="Live Status: CPU, memory, disk, network, battery" />
+</p>
 
 ---
 
