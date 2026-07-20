@@ -6,10 +6,19 @@ import SwiftUI
 /// feel comes from low-opacity gradient washes rather than hardcoded tints.
 enum Theme {
 
-    /// Global accent — soft mint by default, user-selectable in Settings
-    /// (restricted to the signature pastels, of course).
-    static var accent: Color {
-        named(UserDefaults.standard.string(forKey: Prefs.accent) ?? "") ?? .mint
+    /// The user's chosen accent, or nil for the default mixed-pastel scheme
+    /// (mint, green, pink, and blue, each module wearing its own).
+    static var customAccent: Color? {
+        named(UserDefaults.standard.string(forKey: Prefs.accent) ?? "")
+    }
+
+    /// Global accent — soft mint unless the user picked one in Settings.
+    static var accent: Color { customAccent ?? .mint }
+
+    /// Route every module tint through this: the module's own pastel by
+    /// default, or the user's chosen accent app-wide when one is set.
+    static func tint(_ defaultColor: Color) -> Color {
+        customAccent ?? defaultColor
     }
 
     static let accentChoices: [(name: String, color: Color)] = [
@@ -24,6 +33,7 @@ enum Theme {
     /// Palette is deliberately restricted to pink, green, blue (and their
     /// soft relatives mint/teal/cyan) over white — Marmot's signature scheme.
     static func color(for section: SidebarSection) -> Color {
+        if let custom = customAccent { return custom }
         switch section {
         case .dashboard: return .mint
         case .cleanup: return .green

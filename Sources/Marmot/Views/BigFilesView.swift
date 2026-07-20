@@ -76,7 +76,7 @@ struct BigFilesView: View {
                     title: "Big Files",
                     message: "Hunts down every file over 100 MB in your home folder — then filter by size and age to find the huge, forgotten ones. Removal is trash-first with a full preview, like everything in Marmot.",
                     buttonLabel: "Hunt Big Files",
-                    tint: .blue) {
+                    tint: Theme.tint(.blue)) {
             startScan()
         }
     }
