@@ -2,8 +2,8 @@
 # Lives in the tap repo: github.com/EPeiffer94/homebrew-marmot (Casks/marmot.rb)
 # Regenerate for each release with: sh scripts/make-cask.sh
 cask "marmot" do
-  version "2.7.2"
-  sha256 "a79df77f95e8e9b0450e3cbd86885df7e74ea6dc8fe27f4f4b4537844d5b14ba"
+  version "2.8.0"
+  sha256 "1a4ab440393a9a5455a63d56790c4fac24964425032916210acb05ed41017c23"
 
   url "https://github.com/EPeiffer94/Marmot/releases/download/v#{version}/Marmot-#{version}.zip"
   name "Marmot"
