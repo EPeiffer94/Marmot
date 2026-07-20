@@ -33,7 +33,7 @@ struct SettingsView: View {
             Spacer()
             ZStack {
                 Circle()
-                    .fill(Theme.wash(.pink))
+                    .fill(Theme.wash(Theme.tint(.pink)))
                     .frame(width: 92, height: 92)
                 Text("🐿️")
                     .font(.system(size: 44))
@@ -130,29 +130,43 @@ struct SettingsView: View {
         .padding()
     }
 
-    /// Pastel accent swatches — mint is the default.
+    /// Accent swatches. "Default" is the signature mixed scheme — mint,
+    /// green, pink, and blue, each module wearing its own pastel. Picking a
+    /// solid re-themes every module, tile, and button to that color.
     private var accentRow: some View {
         HStack(spacing: 8) {
             Text("Accent color")
             Spacer()
+            swatch(selected: accentName.isEmpty,
+                   fill: AngularGradient(colors: [.mint, .green, .pink, .blue, .mint],
+                                         center: .center),
+                   name: "Default (mixed pastels)") {
+                accentName = ""
+            }
             ForEach(Theme.accentChoices, id: \.name) { choice in
-                let selected = choice.name == (accentName.isEmpty ? "mint" : accentName)
-                Button {
+                swatch(selected: choice.name == accentName,
+                       fill: choice.color.gradient,
+                       name: choice.name.capitalized) {
                     accentName = choice.name
-                } label: {
-                    Circle()
-                        .fill(choice.color.gradient)
-                        .frame(width: 18, height: 18)
-                        .overlay(
-                            Circle().strokeBorder(
-                                Color.primary.opacity(selected ? 0.55 : 0), lineWidth: 2)
-                        )
                 }
-                .buttonStyle(.plain)
-                .help(choice.name.capitalized)
-                .accessibilityLabel("\(choice.name) accent\(selected ? ", selected" : "")")
             }
         }
+    }
+
+    private func swatch<S: ShapeStyle>(selected: Bool, fill: S, name: String,
+                                       action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Circle()
+                .fill(fill)
+                .frame(width: 18, height: 18)
+                .overlay(
+                    Circle().strokeBorder(
+                        Color.primary.opacity(selected ? 0.55 : 0), lineWidth: 2)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(name)
+        .accessibilityLabel("\(name) accent\(selected ? ", selected" : "")")
     }
 
     private var whitelistTab: some View {

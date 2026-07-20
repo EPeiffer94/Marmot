@@ -47,7 +47,7 @@ struct UpdatesView: View {
                     title: "App Updates",
                     message: "Checks every installed app for newer versions using Homebrew, the app's own Sparkle update feed, and the Mac App Store. Nothing installs without your say-so.",
                     buttonLabel: "Check for Updates",
-                    tint: .blue) {
+                    tint: Theme.tint(.blue)) {
             check()
         }
     }
