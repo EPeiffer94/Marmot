@@ -165,6 +165,11 @@ struct PlanPreviewView: View {
         }
         .padding(.vertical, 2)
         .opacity(item.isSelected ? 1 : 0.45)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(item.displayName), \(item.risk.label) risk"
+                + (item.sizeBytes > 0 ? ", \(ByteFormat.string(item.sizeBytes))" : "")
+                + (item.isSelected ? ", selected" : ", not selected"))
         .contextMenu {
             if item.action == .moveToTrash || item.action == .deletePermanently {
                 Button("Reveal in Finder") {

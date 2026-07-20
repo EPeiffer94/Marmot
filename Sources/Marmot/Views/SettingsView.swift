@@ -76,11 +76,24 @@ struct SettingsView: View {
 
     @AppStorage(Prefs.junkAlertGB) private var junkAlertGB = 0
     @AppStorage(Prefs.watchtowerDays) private var watchtowerDays = 0
+    @AppStorage(Prefs.sentinelEnabled) private var sentinelEnabled = true
+    @AppStorage(Prefs.accent) private var accentName = ""
 
     private var generalTab: some View {
         Form {
             Toggle("Show menu bar HUD", isOn: $hudEnabled)
             Toggle("Suggest dry run before applying", isOn: $defaultDryRun)
+            Group {
+                Toggle("Alert when new startup items appear", isOn: $sentinelEnabled)
+                    .onChange(of: sentinelEnabled) { on in
+                        if on {
+                            StartupSentinel.shared.start()
+                        } else {
+                            StartupSentinel.shared.stop()
+                        }
+                    }
+                accentRow
+            }
             Picker("Watch for app updates", selection: $watchtowerDays) {
                 Text("Off").tag(0)
                 Text("Daily").tag(1)
@@ -113,6 +126,31 @@ struct SettingsView: View {
             }
         }
         .padding()
+    }
+
+    /// Pastel accent swatches — mint is the default.
+    private var accentRow: some View {
+        HStack(spacing: 8) {
+            Text("Accent color")
+            Spacer()
+            ForEach(Theme.accentChoices, id: \.name) { choice in
+                let selected = choice.name == (accentName.isEmpty ? "mint" : accentName)
+                Button {
+                    accentName = choice.name
+                } label: {
+                    Circle()
+                        .fill(choice.color.gradient)
+                        .frame(width: 18, height: 18)
+                        .overlay(
+                            Circle().strokeBorder(
+                                Color.primary.opacity(selected ? 0.55 : 0), lineWidth: 2)
+                        )
+                }
+                .buttonStyle(.plain)
+                .help(choice.name.capitalized)
+                .accessibilityLabel("\(choice.name) accent\(selected ? ", selected" : "")")
+            }
+        }
     }
 
     private var whitelistTab: some View {

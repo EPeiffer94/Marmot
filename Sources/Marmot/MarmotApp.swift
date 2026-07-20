@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Autopilot.shared.start()
         UpdaterBridge.shared.start()
         Watchtower.shared.start()
+        StartupSentinel.shared.start()
     }
 
     /// Apps dropped on the Dock icon arrive here (via CFBundleDocumentTypes).

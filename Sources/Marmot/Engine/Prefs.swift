@@ -21,4 +21,10 @@ enum Prefs {
     static let watchtowerLastCheck = "marmot.watchtowerLastCheck"
     /// Last selected sidebar section — restored on launch.
     static let lastSection = "marmot.lastSection"
+    /// Startup Sentinel: notify when new launch agents/daemons appear.
+    static let sentinelEnabled = "marmot.sentinelEnabled"
+    /// Startup Sentinel's baseline of known launchd plist paths.
+    static let sentinelKnown = "marmot.sentinelKnown"
+    /// Accent color name (pink/green/blue/mint/teal/cyan); empty = default.
+    static let accent = "marmot.accent"
 }

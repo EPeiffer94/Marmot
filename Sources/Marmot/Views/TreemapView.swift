@@ -87,6 +87,12 @@ struct TreemapView: View {
                     onDescend(cell.node)
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                "\(cell.node.name), \(ByteFormat.string(cell.node.sizeBytes))"
+                    + (cell.node.isDirectory ? ", folder" : ""))
+            .accessibilityAddTraits(cell.node.isDirectory && !cell.node.children.isEmpty
+                                    ? .isButton : [])
             .contextMenu {
                 Text("\(cell.node.name) — \(ByteFormat.string(cell.node.sizeBytes))")
                 Divider()
