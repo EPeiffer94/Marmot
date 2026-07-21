@@ -260,12 +260,5 @@ extension StatsSampler {
         return "\(hours)h \(minutes)m"
     }
 
-    static func healthScore(_ snap: SystemSnapshot) -> Int {
-        var score = 100.0
-        score -= max(0, snap.cpu.totalUsage - 50) * 0.5       // heavy CPU
-        score -= max(0, snap.memory.usedPercent - 70) * 0.8   // memory pressure
-        let diskUsed = snap.disk.usedPercent
-        score -= max(0, diskUsed - 80) * 1.5                  // nearly-full disk
-        return max(0, min(100, Int(score)))
-    }
+    // Health scoring lives in HealthReport.compute — score plus receipt.
 }

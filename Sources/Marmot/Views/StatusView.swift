@@ -31,7 +31,7 @@ struct StatusView: View {
     // MARK: Health
 
     private var healthHeader: some View {
-        HStack(spacing: 16) {
+        HStack(alignment: .top, spacing: 16) {
             HealthRing(score: snap.healthScore)
                 .frame(width: 72, height: 72)
 
@@ -46,9 +46,40 @@ struct StatusView: View {
                     .foregroundStyle(.tertiary)
             }
             Spacer()
+            healthReceipt
         }
         .padding()
         .cardStyle()
+    }
+
+    /// The score's receipt: every factor, its reading, and what it costs.
+    /// Marmot shows its work — the health number is never a black box.
+    private var healthReceipt: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(snap.healthReport.factors) { factor in
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(factor.penalty == 0 ? Color.green
+                              : (factor.penalty < 15 ? Color.orange : Color.red))
+                        .frame(width: 6, height: 6)
+                    Text(factor.name)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 12)
+                    Text(factor.reading)
+                        .font(.caption.monospacedDigit())
+                    if factor.penalty > 0 {
+                        Text("−\(factor.penalty)")
+                            .font(.caption.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+        }
+        .frame(width: 250)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Health factors: " + snap.healthReport.factors
+            .map { "\($0.name) \($0.reading)" }.joined(separator: ", "))
     }
 
     private var healthDescription: String {
@@ -64,6 +95,8 @@ struct StatusView: View {
         card("CPU", icon: "cpu") {
             metricRow("Total", value: String(format: "%.1f%%", snap.cpu.totalUsage),
                       percent: snap.cpu.totalUsage, color: .blue)
+            Sparkline(values: snap.cpu.history, color: .blue)
+                .frame(height: 24)
             Text(String(format: "Load %.2f / %.2f / %.2f", snap.cpu.loadAvg.0, snap.cpu.loadAvg.1, snap.cpu.loadAvg.2))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -85,6 +118,8 @@ struct StatusView: View {
         card("Memory", icon: "memorychip") {
             metricRow("Used", value: "\(ByteFormat.string(snap.memory.usedBytes)) / \(ByteFormat.string(snap.memory.totalBytes))",
                       percent: snap.memory.usedPercent, color: .teal)
+            Sparkline(values: snap.memory.history, color: .teal)
+                .frame(height: 24)
             HStack(spacing: 14) {
                 labeled("App", ByteFormat.string(snap.memory.appBytes))
                 labeled("Wired", ByteFormat.string(snap.memory.wiredBytes))

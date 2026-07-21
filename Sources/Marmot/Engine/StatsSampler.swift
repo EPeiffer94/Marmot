@@ -7,6 +7,8 @@ struct CPUStats {
     var totalUsage: Double = 0            // 0...100
     var perCore: [Double] = []
     var loadAvg: (Double, Double, Double) = (0, 0, 0)
+    /// Rolling total-usage history (~60 s at the 2 s cadence).
+    var history: [Double] = []
 }
 
 struct MemoryStats {
@@ -16,6 +18,8 @@ struct MemoryStats {
     var wiredBytes: Int64 = 0
     var compressedBytes: Int64 = 0
     var usedPercent: Double { totalBytes > 0 ? Double(usedBytes) / Double(totalBytes) * 100 : 0 }
+    /// Rolling used-percent history (~60 s at the 2 s cadence).
+    var history: [Double] = []
 }
 
 struct DiskStats {
@@ -58,7 +62,10 @@ struct SystemSnapshot {
     var gpuUsage: Double? = nil
     var topProcesses: [ProcessStat] = []
     var uptime: String = ""
-    var healthScore: Int = 100
+    var thermal: ProcessInfo.ThermalState = .nominal
+    /// The score plus its receipt — see HealthReport.
+    var healthReport = HealthReport(factors: [])
+    var healthScore: Int { healthReport.score }
 }
 
 /// Samples live system statistics roughly every 2 seconds.
@@ -112,7 +119,16 @@ final class StatsSampler: ObservableObject {
             snap.gpuUsage = Self.sampleGPU()
             snap.topProcesses = self.sampleProcesses()
             snap.uptime = Self.uptimeString()
-            snap.healthScore = Self.healthScore(snap)
+            snap.thermal = ProcessInfo.processInfo.thermalState
+            snap.cpu.history = Array((self.snapshot.cpu.history + [snap.cpu.totalUsage]).suffix(30))
+            snap.memory.history = Array((self.snapshot.memory.history + [snap.memory.usedPercent]).suffix(30))
+            snap.healthReport = HealthReport.compute(
+                cpuUsage: snap.cpu.totalUsage,
+                memoryUsedPercent: snap.memory.usedPercent,
+                diskUsedPercent: snap.disk.usedPercent,
+                thermal: snap.thermal,
+                batteryHealth: snap.battery.health,
+                batteryPresent: snap.battery.present)
             DispatchQueue.main.async {
                 self.snapshot = snap
             }

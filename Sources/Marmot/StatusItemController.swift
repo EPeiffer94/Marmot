@@ -46,6 +46,19 @@ final class StatusItemController: NSObject {
             }
             .store(in: &cancellables)
 
+        // Health alert: notify (debounced) when the score drops below the
+        // user's threshold.
+        StatsSampler.shared.$snapshot
+            .map(\.healthScore)
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] score in
+                Task { @MainActor [weak self] in
+                    self?.maybeAlertHealth(score: score)
+                }
+            }
+            .store(in: &cancellables)
+
         // Junk alert: watch the cleanup model's total against the threshold.
         CleanupModel.shared.$categories
             .map { $0.reduce(Int64(0)) { $0 + $1.size } }
@@ -79,6 +92,23 @@ final class StatusItemController: NSObject {
         if junkAlerted && !wasAlerted {
             maybeNotify(total: total)
         }
+    }
+
+    /// Health-drop notification: fires when the score sits below the user's
+    /// threshold, at most once per 6 hours, naming the worst factor.
+    private func maybeAlertHealth(score: Int) {
+        let threshold = UserDefaults.standard.integer(forKey: Prefs.healthAlertBelow)
+        guard threshold > 0, score < threshold else { return }
+        let last = UserDefaults.standard.double(forKey: Prefs.healthAlertNotifiedAt)
+        let now = Date().timeIntervalSince1970
+        guard now - last > 6 * 3600 else { return }
+        UserDefaults.standard.set(now, forKey: Prefs.healthAlertNotifiedAt)
+
+        let worst = StatsSampler.shared.snapshot.healthReport.worst
+        let cause = worst.map { "\($0.name): \($0.reading). " } ?? ""
+        Notifier.post(title: "System health dropped to \(score)",
+                      body: cause + "Open Marmot → Live Status for the full breakdown.",
+                      identifier: "marmot.healthAlert")
     }
 
     /// Posts a real notification on the rising edge, at most once per day.
