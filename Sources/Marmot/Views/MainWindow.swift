@@ -71,17 +71,10 @@ extension Notification.Name {
     static let marmotPlanApplied = Notification.Name("marmot.planApplied")
 }
 
-/// Transient bottom toast after a real (non-dry-run) clean.
-struct FreedToast: Identifiable {
-    let id = UUID()
-    var freed: Int64 = 0
-    var restorables: [ItemResult] = []
-    var restoredMessage: String?
-}
-
 struct MainWindow: View {
-    @State private var selection: SidebarSection?
-    @State private var showPalette = false
+    // Internal (not private) so MainWindow+Palette can drive navigation.
+    @State var selection: SidebarSection?
+    @State var showPalette = false
     @State private var dropTargeted = false
     @State private var toast: FreedToast?
     @EnvironmentObject var stats: StatsSampler
@@ -178,11 +171,20 @@ struct MainWindow: View {
             }
         }
         .overlay {
-            if dropTargeted { dropOverlay }
+            if dropTargeted { DropTargetOverlay() }
         }
         .overlay(alignment: .bottom) {
             if let toast {
-                toastView(toast)
+                FreedToastView(
+                    toast: toast,
+                    onUndo: {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            self.toast = toast.performUndo()
+                        }
+                    },
+                    onClose: {
+                        withAnimation(.easeOut(duration: 0.2)) { self.toast = nil }
+                    })
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -256,162 +258,6 @@ struct MainWindow: View {
                 )
         }
         .tag(section)
-    }
-
-    private var paletteItems: [PaletteItem] {
-        var items = SidebarSection.allCases.map { section in
-            PaletteItem(title: section.rawValue, subtitle: section.blurb,
-                        icon: section.icon) { selection = section }
-        }
-        items.append(PaletteItem(
-            title: "Smart Scan",
-            subtitle: "Scan all cleanup categories now",
-            icon: "wand.and.stars") {
-                selection = .cleanup
-                CleanupModel.shared.rescan()
-            })
-        items.append(PaletteItem(
-            title: "Check for Updates",
-            subtitle: "See if a newer Marmot is available",
-            icon: "arrow.down.circle") {
-                UpdaterBridge.shared.checkForUpdates()
-            })
-        for rule in Autopilot.shared.rules where rule.isEnabled {
-            items.append(PaletteItem(
-                title: "Run rule: \(rule.name)",
-                subtitle: "Autopilot — \(rule.frequency.rawValue)",
-                icon: "clock.badge.checkmark") {
-                    selection = .autopilot
-                    Autopilot.shared.run(rule)
-                })
-        }
-        return items
-    }
-
-    /// Query-aware palette items: parsed intents ranked above the static list.
-    private func dynamicPaletteItems(for query: String) -> [PaletteItem] {
-        var items: [PaletteItem] = []
-
-        if let bigQuery = IntentParser.bigFilesQuery(from: query) {
-            let sizeText = bigQuery.minSizeMB >= 1000
-                ? "\(bigQuery.minSizeMB / 1000) GB+"
-                : "\(bigQuery.minSizeMB) MB+"
-            let ageText = bigQuery.minAgeDays >= 365 ? ", 1+ year old"
-                : (bigQuery.minAgeDays >= 180 ? ", 6+ months old" : "")
-            items.append(PaletteItem(
-                title: "Hunt files \(sizeText)\(ageText)",
-                subtitle: "Big Files with these filters applied",
-                icon: "externaldrive") {
-                    selection = .bigFiles
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        NotificationCenter.default.post(
-                            name: .marmotBigFilesIntent, object: nil,
-                            userInfo: ["minSizeMB": bigQuery.minSizeMB,
-                                       "minAgeDays": bigQuery.minAgeDays])
-                    }
-                })
-        }
-
-        if let action = IntentParser.appAction(from: query) {
-            let matches = AppInventory.shared.apps
-                .filter { $0.name.localizedCaseInsensitiveContains(action.name) }
-                .prefix(3)
-            for app in matches {
-                let reset = action.reset
-                items.append(PaletteItem(
-                    title: "\(reset ? "Reset" : "Uninstall") \(app.name)",
-                    subtitle: reset ? "Clear its data, keep the app" : "App + all leftovers, previewed first",
-                    icon: reset ? "arrow.counterclockwise" : "trash") {
-                        selection = .uninstall
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            NotificationCenter.default.post(
-                                name: .marmotUninstallIntent, object: nil,
-                                userInfo: ["appPath": app.id, "reset": reset])
-                        }
-                    })
-            }
-        }
-        return items
-    }
-
-    // MARK: Drop overlay + freed toast
-
-    /// Shown while an .app is being dragged over the window.
-    private var dropOverlay: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.accent.opacity(0.08))
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Theme.accent.opacity(0.55),
-                              style: StrokeStyle(lineWidth: 2.5, dash: [10, 7]))
-            VStack(spacing: 10) {
-                Image(systemName: "trash.square")
-                    .font(.system(size: 46, weight: .light))
-                    .foregroundStyle(Theme.accent)
-                Text("Drop to uninstall")
-                    .font(.title3.weight(.semibold))
-                Text("Full removal preview first — nothing happens without your OK")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(24)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-        }
-        .padding(14)
-        .allowsHitTesting(false)
-    }
-
-    private func toastView(_ toast: FreedToast) -> some View {
-        HStack(spacing: 12) {
-            if let restored = toast.restoredMessage {
-                Image(systemName: "arrow.uturn.backward.circle.fill")
-                    .foregroundStyle(.blue)
-                Text(restored)
-                    .font(.callout.weight(.medium))
-            } else {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Freed \(ByteFormat.string(toast.freed))")
-                    .font(.callout.weight(.semibold).monospacedDigit())
-                if !toast.restorables.isEmpty {
-                    Button("Undo") { undoToast(toast) }
-                        .buttonStyle(.link)
-                        .help("Moves everything from this clean back out of the Trash.")
-                }
-            }
-            Button {
-                withAnimation(.easeOut(duration: 0.2)) { self.toast = nil }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.18)))
-        .padding(.bottom, 16)
-    }
-
-    private func undoToast(_ current: FreedToast) {
-        var restored = 0
-        for result in current.restorables {
-            guard let from = result.trashedTo else { continue }
-            if TrashRestore.restore(target: result.item.target, from: from) == nil {
-                restored += 1
-            }
-        }
-        let text: String
-        if restored == 0 {
-            text = "Nothing could be restored — the Trash may have been emptied."
-        } else {
-            text = "Restored \(restored) item\(restored == 1 ? "" : "s") from the Trash."
-        }
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            toast = FreedToast(freed: current.freed, restoredMessage: text)
-        }
     }
 
     private var sidebarFooter: some View {
