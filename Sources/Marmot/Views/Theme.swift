@@ -6,34 +6,57 @@ import SwiftUI
 /// feel comes from low-opacity gradient washes rather than hardcoded tints.
 enum Theme {
 
-    /// The user's chosen accent, or nil for the default mixed-pastel scheme
-    /// (mint, green, pink, and blue, each module wearing its own).
-    static var customAccent: Color? {
-        named(UserDefaults.standard.string(forKey: Prefs.accent) ?? "")
+    /// A multi-colored theme: an accent for controls plus a set of pastels
+    /// cycled across modules, tiles, and cards. Never monochrome — variety
+    /// is part of Marmot's personality.
+    struct Palette {
+        let name: String
+        let accent: Color
+        let colors: [Color]
     }
 
-    /// Global accent — soft mint unless the user picked one in Settings.
-    static var accent: Color { customAccent ?? .mint }
-
-    /// Route every module tint through this: the module's own pastel by
-    /// default, or the user's chosen accent app-wide when one is set.
-    static func tint(_ defaultColor: Color) -> Color {
-        customAccent ?? defaultColor
-    }
-
-    static let accentChoices: [(name: String, color: Color)] = [
-        ("mint", .mint), ("green", .green), ("teal", .teal),
-        ("cyan", .cyan), ("blue", .blue), ("pink", .pink)
+    /// Selectable themes. "Classic" (the default, when no theme is stored)
+    /// is the original hand-tuned mint/green/pink/blue scheme.
+    static let palettes: [Palette] = [
+        Palette(name: "Ocean", accent: .blue,
+                colors: [.blue, .cyan, .teal, .mint, .indigo]),
+        Palette(name: "Bubblegum", accent: .pink,
+                colors: [.pink, .purple, .indigo, .blue]),
+        Palette(name: "Meadow", accent: .green,
+                colors: [.green, .mint, .teal, .cyan]),
+        Palette(name: "Sorbet", accent: .orange,
+                colors: [.pink, .orange, .yellow, .mint])
     ]
 
-    static func named(_ name: String) -> Color? {
-        accentChoices.first { $0.name == name }?.color
+    static func palette(named name: String) -> Palette? {
+        palettes.first { $0.name == name }
     }
 
-    /// Palette is deliberately restricted to pink, green, blue (and their
-    /// soft relatives mint/teal/cyan) over white — Marmot's signature scheme.
+    /// The active theme, or nil for Classic. Unknown stored values (e.g.
+    /// pre-2.9 single-color names) fall back to Classic gracefully.
+    static var current: Palette? {
+        palette(named: UserDefaults.standard.string(forKey: Prefs.accent) ?? "")
+    }
+
+    /// Control accent — soft mint in Classic, the theme's accent otherwise.
+    static var accent: Color { current?.accent ?? .mint }
+
+    /// Slot-based color for non-module surfaces (dashboard cards etc.):
+    /// the hand-tuned classic color by default, or a stable position in the
+    /// active theme's cycle so neighboring cards stay varied.
+    static func slot(_ index: Int, classic: Color) -> Color {
+        guard let palette = current else { return classic }
+        return palette.colors[index % palette.colors.count]
+    }
+
+    /// Palette is deliberately restricted to soft pastels over white —
+    /// Marmot's signature scheme. Classic assigns each module its own color;
+    /// themes cycle their colors across the sidebar in order.
     static func color(for section: SidebarSection) -> Color {
-        if let custom = customAccent { return custom }
+        if let palette = current {
+            let index = SidebarSection.allCases.firstIndex(of: section) ?? 0
+            return palette.colors[index % palette.colors.count]
+        }
         switch section {
         case .dashboard: return .mint
         case .cleanup: return .green

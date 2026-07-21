@@ -23,7 +23,7 @@ struct SettingsView: View {
         }
         .frame(width: 520, height: 380)
         // Covers the standalone ⌘, window too (it's outside MainWindow's tint).
-        .tint(Theme.named(accentName) ?? .mint)
+        .tint(Theme.palette(named: accentName)?.accent ?? .mint)
     }
 
     @AppStorage(Prefs.supporter) private var supporter = false
@@ -33,7 +33,7 @@ struct SettingsView: View {
             Spacer()
             ZStack {
                 Circle()
-                    .fill(Theme.wash(Theme.tint(.pink)))
+                    .fill(Theme.wash(Theme.slot(0, classic: .pink)))
                     .frame(width: 92, height: 92)
                 Text("🐿️")
                     .font(.system(size: 44))
@@ -130,24 +130,25 @@ struct SettingsView: View {
         .padding()
     }
 
-    /// Accent swatches. "Default" is the signature mixed scheme — mint,
-    /// green, pink, and blue, each module wearing its own pastel. Picking a
-    /// solid re-themes every module, tile, and button to that color.
+    /// Theme swatches — every theme is multi-colored (never monochrome).
+    /// "Classic" is the original hand-tuned mint/green/pink/blue scheme;
+    /// the others cycle their own pastel families across the modules.
     private var accentRow: some View {
         HStack(spacing: 8) {
-            Text("Accent color")
+            Text("Color theme")
             Spacer()
             swatch(selected: accentName.isEmpty,
                    fill: AngularGradient(colors: [.mint, .green, .pink, .blue, .mint],
                                          center: .center),
-                   name: "Default (mixed pastels)") {
+                   name: "Classic") {
                 accentName = ""
             }
-            ForEach(Theme.accentChoices, id: \.name) { choice in
-                swatch(selected: choice.name == accentName,
-                       fill: choice.color.gradient,
-                       name: choice.name.capitalized) {
-                    accentName = choice.name
+            ForEach(Theme.palettes, id: \.name) { palette in
+                swatch(selected: palette.name == accentName,
+                       fill: AngularGradient(colors: palette.colors + [palette.colors[0]],
+                                             center: .center),
+                       name: palette.name) {
+                    accentName = palette.name
                 }
             }
         }
