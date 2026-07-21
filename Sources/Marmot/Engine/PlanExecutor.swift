@@ -76,27 +76,41 @@ final class PlanExecutor {
                 return ItemResult(item: item, outcome: .done, detail: "Deleted.")
             }
         } catch {
-            // Direct trashing fails for root-owned items (e.g. apps installed
-            // by an installer package). Finder can trash those — it shows the
-            // standard admin prompt itself and the item stays recoverable.
-            if item.action == .moveToTrash {
-                let finder = trashViaFinder(path)
-                if finder.succeeded {
-                    return ItemResult(item: item, outcome: .done, detail: "Moved to Trash via Finder.")
-                }
-                let hint: String
-                if finder.stderr.contains("-1743") {
-                    hint = " Allow Marmot to control Finder in System Settings → Privacy & Security → Automation, then retry."
-                } else if isPermissionError(error) {
-                    hint = " This is usually Full Disk Access: grant it to Marmot in System Settings → Privacy & Security → Full Disk Access, then retry."
-                } else {
-                    hint = ""
-                }
-                return ItemResult(item: item, outcome: .failed,
-                                  detail: (error.localizedDescription + " Finder fallback: \(finder.stderr.trimmingCharacters(in: .whitespacesAndNewlines))" + hint))
+            guard item.action == .moveToTrash else {
+                return ItemResult(item: item, outcome: .failed, detail: error.localizedDescription)
             }
-            return ItemResult(item: item, outcome: .failed, detail: error.localizedDescription)
+
+            // A permission error on an item inside the user's own home is a
+            // Full Disk Access restriction — and Finder is subject to the very
+            // same restriction, so asking it only produces a jarring "can't be
+            // completed" modal and still fails. Skip Finder here and give the
+            // one actionable instruction directly.
+            if isPermissionError(error) && isUnderHome(path) {
+                return ItemResult(item: item, outcome: .failed,
+                                  detail: "Needs Full Disk Access. Grant it to Marmot in System Settings → "
+                                        + "Privacy & Security → Full Disk Access, relaunch Marmot, and re-run.")
+            }
+
+            // Root-owned items (e.g. apps installed by a package, or files in
+            // /Library) fail Marmot's direct trash but Finder can move them —
+            // it shows the standard admin prompt and the item stays in Trash.
+            let finder = trashViaFinder(path)
+            if finder.succeeded {
+                return ItemResult(item: item, outcome: .done, detail: "Moved to Trash via Finder.")
+            }
+            let hint = finder.stderr.contains("-1743")
+                ? " Allow Marmot to control Finder in System Settings → Privacy & Security → Automation, then retry."
+                : (isPermissionError(error)
+                    ? " This is usually Full Disk Access: grant it in System Settings → Privacy & Security, then retry."
+                    : "")
+            return ItemResult(item: item, outcome: .failed,
+                              detail: (error.localizedDescription + hint))
         }
+    }
+
+    private static func isUnderHome(_ path: String) -> Bool {
+        let home = SafetyRules.home
+        return path == home || path.hasPrefix(home + "/")
     }
 
     /// Sandboxed-container and TCC-protected paths surface as write/permission
