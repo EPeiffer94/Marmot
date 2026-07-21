@@ -87,21 +87,8 @@ struct DiskMapView: View {
     }
 
     private var scanningState: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("Measuring \(scanTarget)…")
-                .font(.callout)
-            Text(progressPath)
-                .font(.caption.monospaced())
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: 480)
-            Button("Cancel") {
-                scanner?.isCancelled = true
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ScanningStateView(title: "Measuring \(scanTarget)…",
+                          path: progressPath) { scanner?.isCancelled = true }
     }
 
     private func breadcrumb(_ node: FileNode) -> some View {

@@ -209,12 +209,8 @@ struct MainWindow: View {
             guard let path = note.userInfo?["appPath"] as? String else { return }
             selection = .uninstall
             AppInventory.shared.loadIfNeeded()
-            // Give the Uninstaller a beat to mount before it receives the intent.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                NotificationCenter.default.post(
-                    name: .marmotUninstallIntent, object: nil,
-                    userInfo: ["appPath": path, "reset": false])
-            }
+            DeepLink.post(.marmotUninstallIntent,
+                          userInfo: ["appPath": path, "reset": false], delay: 0.2)
         }
         .onReceive(NotificationCenter.default.publisher(for: .marmotPlanApplied)) { note in
             guard let result = note.userInfo?["result"] as? ExecutionResult,
