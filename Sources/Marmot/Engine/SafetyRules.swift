@@ -101,9 +101,12 @@ enum SafetyRules {
         // that was previewed and validated.
         guard p.hasPrefix("/"), !p.contains(".."), p.count > 1,
               !p.contains("\0") else { return false }
-        // Never the home dir, a volume root, or anything shallower than 3 components.
+        // Never the home dir or a bare volume/top-level path. Depth 2 must
+        // stay legal — every app bundle is "/Applications/Name.app" — so the
+        // real shallow-path defense is the allowlist below (a depth-2 path
+        // only survives if it sits strictly inside an allowed root).
         let components = p.split(separator: "/")
-        guard components.count >= 3 else { return false }
+        guard components.count >= 2 else { return false }
         guard p != home else { return false }
 
         // Never inside a media library package.

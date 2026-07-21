@@ -84,14 +84,35 @@ final class PlanExecutor {
                 if finder.succeeded {
                     return ItemResult(item: item, outcome: .done, detail: "Moved to Trash via Finder.")
                 }
-                let hint = finder.stderr.contains("-1743")
-                    ? " Allow Marmot to control Finder in System Settings → Privacy & Security → Automation, then retry."
-                    : ""
+                let hint: String
+                if finder.stderr.contains("-1743") {
+                    hint = " Allow Marmot to control Finder in System Settings → Privacy & Security → Automation, then retry."
+                } else if isPermissionError(error) {
+                    hint = " This is usually Full Disk Access: grant it to Marmot in System Settings → Privacy & Security → Full Disk Access, then retry."
+                } else {
+                    hint = ""
+                }
                 return ItemResult(item: item, outcome: .failed,
                                   detail: (error.localizedDescription + " Finder fallback: \(finder.stderr.trimmingCharacters(in: .whitespacesAndNewlines))" + hint))
             }
             return ItemResult(item: item, outcome: .failed, detail: error.localizedDescription)
         }
+    }
+
+    /// Sandboxed-container and TCC-protected paths surface as write/permission
+    /// errors — the actionable cure is almost always Full Disk Access.
+    private static func isPermissionError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain &&
+            (nsError.code == NSFileWriteNoPermissionError || nsError.code == NSFileReadNoPermissionError) {
+            return true
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError,
+           underlying.domain == NSPOSIXErrorDomain,
+           underlying.code == Int(EPERM) || underlying.code == Int(EACCES) {
+            return true
+        }
+        return false
     }
 
     /// Trash an item through Finder. Finder handles privileged items by
