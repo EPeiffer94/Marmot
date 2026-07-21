@@ -155,17 +155,6 @@ final class DiskScanner {
             }
         }
 
-        guard let dup = strdup(rootPath) else { return nil }
-        let argv = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: 2)
-        argv[0] = dup
-        argv[1] = nil
-        defer {
-            free(dup)
-            argv.deallocate()
-        }
-        guard let fts = fts_open(argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return nil }
-        defer { fts_close(fts) }
-
         var stack: [Builder] = []
         var result: FileNode?
         var directoriesSeen = 0
@@ -199,60 +188,51 @@ final class DiskScanner {
             }
         }
 
-        while let entry = fts_read(fts) {
-            if isCancelled { break }
-            let info = Int32(entry.pointee.fts_info)
-            let level = Int(entry.pointee.fts_level) // 0 == rootPath itself
-            let absoluteDepth = baseDepth + level
-            let entryPath = String(cString: entry.pointee.fts_path)
-
-            switch info {
-            case FTS_D:
+        let opened = FTSWalker.walk(
+            root: rootPath,
+            isCancelled: { self.isCancelled },
+            directoryPre: { entryPath, level, st in
+                let absoluteDepth = baseDepth + level // level 0 == rootPath
                 // Cloud-provider folders: visible stub, never descended.
-                if skipCloud && Self.cloudRoots.contains(entryPath) {
+                if self.skipCloud && Self.cloudRoots.contains(entryPath) {
                     if absoluteDepth <= Self.maxDepth, let parent = stack.last {
                         parent.children.append(FileNode(
                             name: (entryPath as NSString).lastPathComponent + " (cloud — skipped)",
                             path: entryPath, isDirectory: true, sizeBytes: 0))
                     }
-                    _ = fts_set(fts, entry, FTS_SKIP)
-                    continue
+                    return .skip
                 }
                 directoriesSeen += 1
-                if directoriesSeen % 128 == 0 { onProgress?(entryPath) }
+                if directoriesSeen % 128 == 0 { self.onProgress?(entryPath) }
                 if absoluteDepth <= Self.maxDepth {
                     stack.append(Builder(name: (entryPath as NSString).lastPathComponent,
                                          path: entryPath))
-                } else if let st = entry.pointee.fts_statp {
+                } else if let st {
                     // Beyond the structure cap: count the dir inode like `du`.
                     stack.last?.size += Int64(st.pointee.st_blocks) * 512
                 }
-
-            case FTS_DP:
-                if absoluteDepth <= Self.maxDepth, let builder = stack.popLast() {
+                return .descend
+            },
+            directoryPost: { _, level in
+                if baseDepth + level <= Self.maxDepth, let builder = stack.popLast() {
                     finish(builder)
                 }
-
-            case FTS_F:
-                guard let st = entry.pointee.fts_statp else { continue }
+            },
+            file: { entryPath, level, st in
                 let size = Int64(st.pointee.st_blocks) * 512
                 if size >= Self.largeFileThreshold {
-                    largeFilesLock.lock()
-                    largeFiles.append(LargeFile(path: entryPath, sizeBytes: size))
-                    largeFilesLock.unlock()
+                    self.largeFilesLock.lock()
+                    self.largeFiles.append(LargeFile(path: entryPath, sizeBytes: size))
+                    self.largeFilesLock.unlock()
                 }
-                if absoluteDepth <= Self.maxDepth {
+                if baseDepth + level <= Self.maxDepth {
                     stack.last?.children.append(FileNode(
                         name: (entryPath as NSString).lastPathComponent,
                         path: entryPath, isDirectory: false, sizeBytes: size))
                 }
                 stack.last?.size += size
-
-            default:
-                // Symlinks (never followed), unreadable dirs, stat failures.
-                continue
-            }
-        }
+            })
+        guard opened else { return nil }
 
         // Cancellation or normal end: unwind whatever remains.
         while let builder = stack.popLast() {
