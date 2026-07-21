@@ -90,7 +90,40 @@ struct PlanPreviewView: View {
 
     // MARK: Review list
 
+    /// Warn BEFORE applying when items sit in app containers macOS protects
+    /// without Full Disk Access — instead of failing after with raw errors.
+    private var needsFullDiskAccessWarning: Bool {
+        !Permissions.hasFullDiskAccess
+            && Permissions.planTouchesProtectedContainers(plan.items)
+    }
+
+    private var fdaBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.shield")
+                .foregroundStyle(.orange)
+            Text("Some items live in app containers that macOS protects. "
+                + "Grant Marmot Full Disk Access, relaunch Marmot, and re-run for a clean sweep.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("Open Settings") { Permissions.openFullDiskAccessSettings() }
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.orange.opacity(0.10))
+    }
+
     private var reviewBody: some View {
+        VStack(spacing: 0) {
+            if needsFullDiskAccessWarning {
+                fdaBanner
+            }
+            reviewList
+        }
+    }
+
+    private var reviewList: some View {
         List {
             ForEach(plan.groups, id: \.self) { group in
                 Section(header: groupHeader(group)) {
