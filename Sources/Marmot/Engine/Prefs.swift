@@ -25,6 +25,10 @@ enum Prefs {
     static let sentinelEnabled = "marmot.sentinelEnabled"
     /// Startup Sentinel's baseline of known launchd plist paths.
     static let sentinelKnown = "marmot.sentinelKnown"
+    /// Notify when the health score drops below this (0 = off).
+    static let healthAlertBelow = "marmot.healthAlertBelow"
+    /// Unix timestamp of the last health notification (6h debounce).
+    static let healthAlertNotifiedAt = "marmot.healthAlertNotifiedAt"
     /// Accent color name (pink/green/blue/mint/teal/cyan); empty = default.
     /// NOTE: deliberately NOT dot-namespaced — @AppStorage observes
     /// UserDefaults via KVO, and KVO treats dots as keypath separators, so

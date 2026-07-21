@@ -80,6 +80,7 @@ struct SettingsView: View {
     @AppStorage(Prefs.watchtowerDays) private var watchtowerDays = 0
     @AppStorage(Prefs.sentinelEnabled) private var sentinelEnabled = true
     @AppStorage(Prefs.accent) private var accentName = ""
+    @AppStorage(Prefs.healthAlertBelow) private var healthAlertBelow = 0
 
     private var generalTab: some View {
         Form {
@@ -94,6 +95,12 @@ struct SettingsView: View {
                             StartupSentinel.shared.stop()
                         }
                     }
+                Picker("Health alert", selection: $healthAlertBelow) {
+                    Text("Off").tag(0)
+                    Text("Below 70").tag(70)
+                    Text("Below 50").tag(50)
+                    Text("Below 30").tag(30)
+                }
                 accentRow
             }
             Picker("Watch for app updates", selection: $watchtowerDays) {
