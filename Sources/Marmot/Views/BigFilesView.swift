@@ -82,22 +82,11 @@ struct BigFilesView: View {
     }
 
     private var scanningState: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text(foundCount > 0
-                 ? "Found \(foundCount) big files — \(ByteFormat.string(foundBytes)) so far"
-                 : "Hunting big files…")
-                .font(.callout.monospacedDigit())
-                .contentTransition(.numericText())
-                .animation(.default, value: foundCount)
-            Text(progressPath)
-                .font(.caption.monospaced())
-                .foregroundStyle(.tertiary)
-                .lineLimit(1).truncationMode(.middle)
-                .frame(maxWidth: 480)
-            Button("Cancel") { scanner?.isCancelled = true }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ScanningStateView(
+            title: foundCount > 0
+                ? "Found \(foundCount) big files — \(ByteFormat.string(foundBytes)) so far"
+                : "Hunting big files…",
+            path: progressPath) { scanner?.isCancelled = true }
     }
 
     // MARK: Table

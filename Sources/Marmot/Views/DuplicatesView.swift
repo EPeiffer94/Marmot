@@ -73,30 +73,20 @@ struct DuplicatesView: View {
                     })
     }
 
+    @ViewBuilder
     private var scanningState: some View {
-        VStack(spacing: 12) {
-            switch phase {
-            case .comparing(let done, let total):
-                ProgressView(value: Double(done), total: Double(max(total, 1)))
-                    .frame(width: 320)
-                Text("Comparing \(done) of \(total) candidates…")
-                    .font(.callout.monospacedDigit())
-            case .collecting(let files):
-                ProgressView()
-                Text("Cataloguing files… \(files) candidates so far")
-                    .font(.callout.monospacedDigit())
-            case nil:
-                ProgressView()
-                Text("Cataloguing files…").font(.callout)
-            }
-            Text(progressPath)
-                .font(.caption.monospaced())
-                .foregroundStyle(.tertiary)
-                .lineLimit(1).truncationMode(.middle)
-                .frame(maxWidth: 480)
-            Button("Cancel") { engine?.isCancelled = true }
+        switch phase {
+        case .comparing(let done, let total):
+            ScanningStateView(title: "Comparing \(done) of \(total) candidates…",
+                              progress: (done: done, total: total),
+                              path: progressPath) { engine?.isCancelled = true }
+        case .collecting(let files):
+            ScanningStateView(title: "Cataloguing files… \(files) candidates so far",
+                              path: progressPath) { engine?.isCancelled = true }
+        case nil:
+            ScanningStateView(title: "Cataloguing files…",
+                              path: progressPath) { engine?.isCancelled = true }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: Group list

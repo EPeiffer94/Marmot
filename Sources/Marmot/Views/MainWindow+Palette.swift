@@ -49,12 +49,9 @@ extension MainWindow {
                 subtitle: "Big Files with these filters applied",
                 icon: "externaldrive") {
                     selection = .bigFiles
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        NotificationCenter.default.post(
-                            name: .marmotBigFilesIntent, object: nil,
-                            userInfo: ["minSizeMB": bigQuery.minSizeMB,
-                                       "minAgeDays": bigQuery.minAgeDays])
-                    }
+                    DeepLink.post(.marmotBigFilesIntent,
+                                  userInfo: ["minSizeMB": bigQuery.minSizeMB,
+                                             "minAgeDays": bigQuery.minAgeDays])
                 })
         }
 
@@ -69,11 +66,8 @@ extension MainWindow {
                     subtitle: reset ? "Clear its data, keep the app" : "App + all leftovers, previewed first",
                     icon: reset ? "arrow.counterclockwise" : "trash") {
                         selection = .uninstall
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            NotificationCenter.default.post(
-                                name: .marmotUninstallIntent, object: nil,
-                                userInfo: ["appPath": app.id, "reset": reset])
-                        }
+                        DeepLink.post(.marmotUninstallIntent,
+                                      userInfo: ["appPath": app.id, "reset": reset])
                     })
             }
         }
