@@ -2,7 +2,7 @@
 
 **A free, open-source Mac cleaner that shows you everything before it touches anything.**
 
-Marmot cleans, uninstalls, automates, analyzes, and monitors your Mac — fourteen tools in one lightweight native app, dressed in friendly pastels. Think CleanMyMac + AppCleaner + DaisyDisk + iStat Menus + MacUpdater, except it's free, MIT-licensed, self-updating, and *obsessively* transparent about what it's doing. 💛
+Marmot cleans, uninstalls, automates, analyzes, watches, and monitors your Mac — fifteen tools in one lightweight native app, dressed in friendly pastels (with five switchable color themes). Think CleanMyMac + AppCleaner + DaisyDisk + iStat Menus + MacUpdater, except it's free, MIT-licensed, self-updating, and *obsessively* transparent about what it's doing. 💛
 
 Inspired by the wonderful [Mole CLI](https://github.com/tw93/mole), rebuilt from scratch in Swift/SwiftUI.
 
@@ -70,6 +70,7 @@ And even then: removals are **trash-first** (recoverable — and restorable stra
 | **Big-file hunter** | ✅ | ✅ | ❌ | ✅ |
 | **Disk treemap** | ✅ | ✅ | ❌ | ✅ |
 | **Disk Time Travel** (scrub folder history) | ✅ | ❌ | ❌ | ❌ |
+| **New-startup-item alerts** (the day something installs itself) | ✅ | ❌ | ❌ | ❌ |
 | **Scheduled auto-clean rules** | ✅ | ❌ | ❌ | ❌ |
 | **App update checker** (brew + Sparkle + App Store) | ✅ | ✅ | ❌ | ❌ |
 | **Menu bar system monitor** | ✅ | ✅ | ❌ | ❌ |
@@ -82,7 +83,7 @@ And even then: removals are **trash-first** (recoverable — and restorable stra
 
 ## 🧰 What's inside
 
-**🏠 Dashboard** — system health, reclaimable space with one-button **Smart Scan**, storage trends over time, and a suggestions feed that connects the dots ("12 GB of developer junk", "3 apps untouched for a year"). Press **⌘K** anywhere for the command palette.
+**🏠 Dashboard** — system health, reclaimable space with one-button **Smart Scan**, storage trends with a fill-up forecast, a suggestions feed that connects the dots ("12 GB of developer junk", "3 apps untouched for a year"), and **Marmot Wrapped** ✨ — a shareable card of your cleaning stats. Press **⌘K** anywhere for the command palette (it understands "uninstall slack" and "files over 2gb"), **⌘1–9** to jump between tools; Marmot reopens wherever you left off.
 
 ### Clean
 
@@ -97,7 +98,7 @@ And even then: removals are **trash-first** (recoverable — and restorable stra
 
 | | | |
 |---|---|---|
-| 🗑️ | **Uninstaller** | App + all its hidden friends: launch agents, preferences, containers, caches. **Reset** clears an app's data without uninstalling; **Time Capsule** archives everything to a zip first, making uninstalls reversible forever |
+| 🗑️ | **Uninstaller** | App + all its hidden friends: launch agents, preferences, containers, caches. **Drag any app onto the window or Dock icon** to jump straight to its removal preview. **Reset** clears an app's data without uninstalling; **Time Capsule** archives everything to a zip first, making uninstalls reversible forever |
 | ⏳ | **Unused Apps** | Apps unopened for 3/6/12 months (real Spotlight data) with their footprint |
 | ⬇️ | **App Updates** | Outdated apps via Homebrew, Sparkle feeds, and the App Store — plus **Watchtower**, which checks in the background and notifies you |
 
@@ -105,14 +106,14 @@ And even then: removals are **trash-first** (recoverable — and restorable stra
 
 | | | |
 |---|---|---|
-| 🗺️ | **Disk Map** | Clickable treemap colored by file type, with "since last scan: Movies +12 GB" folder diffing |
-| ⚡ | **Startup Items** | Every login item, agent, and daemon in plain English — trim your boot |
+| 🗺️ | **Disk Map** | Clickable treemap colored by file type, "since last scan: Movies +12 GB" folder diffing, and **Disk Time Travel** ⏪ — scrub a timeline and watch the map morph as folders grew and shrank |
+| ⚡ | **Startup Items** | Every login item, agent, and daemon in plain English — plus **Startup Sentinel** 🗼, which notifies you the day something new starts launching at boot |
 | 🔧 | **Maintenance** | Flush DNS, rebuild Spotlight, thin Time Machine snapshots… each task shows its *exact commands* first |
 | 📊 | **Live Status** | Per-core CPU, GPU, memory, disk I/O, network graphs, battery health — plus a built-in **internet speed test** |
 | 🎛️ | **Menu bar HUD** | Live CPU% up top; click for a mini dashboard, junk alerts included |
 | 🕰️ | **History** | Every change and dry run, filterable — with one-click **Restore** from the Trash |
 
-> 💡 Several of these — App Reset, background update watching, scheduled cleaning, time-capsule uninstalls — are paid features elsewhere. Here they're just… features.
+> 💡 Several of these — App Reset, background update watching, new-startup-item alerts, scheduled cleaning, time-capsule uninstalls — are paid features elsewhere. Here they're just… features.
 
 ---
 
@@ -132,6 +133,7 @@ And even then: removals are **trash-first** (recoverable — and restorable stra
 - Admin-needing tasks are labeled `admin` and use the standard macOS password prompt
 - Your own no-go folders: **Settings → Protected Paths**
 - Marmot **never runs as root**, and never phones home — the only network calls are the ones you ask for (update checks, speed test)
+- Hostile filenames can't break out: every path spliced into a shell command goes through strict POSIX quoting, and the safety gate is hammered by a hostile-path test suite on every change. The full threat model lives in [SECURITY.md](SECURITY.md)
 - Still nervous? Dry Run everything, forever. Totally valid lifestyle. 💙
 
 ---
