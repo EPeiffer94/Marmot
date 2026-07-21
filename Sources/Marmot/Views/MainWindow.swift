@@ -150,7 +150,7 @@ struct MainWindow: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .tint(Theme.named(accentName) ?? .mint)
+        .tint(Theme.palette(named: accentName)?.accent ?? .mint)
         .navigationTitle("Marmot")
         .background(
             // Hidden triggers: ⌘K palette + ⌘1–9 section jumps.
