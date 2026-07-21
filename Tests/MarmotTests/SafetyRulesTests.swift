@@ -45,6 +45,19 @@ final class SafetyRulesTests: XCTestCase {
         XCTAssertFalse(SafetyRules.isSafeToRemove(home + "/Library/Caches"))
         XCTAssertFalse(SafetyRules.isSafeToRemove(home + "/Downloads"))
         XCTAssertFalse(SafetyRules.isSafeToRemove(home + "/.Trash"))
+        XCTAssertFalse(SafetyRules.isSafeToRemove("/Applications"))
+    }
+
+    /// Regression: app bundles live at depth 2 ("/Applications/Name.app").
+    /// A blanket minimum-depth rule once made the Uninstaller skip every
+    /// app it was asked to remove.
+    func testAppBundlesInApplicationsAreRemovable() {
+        XCTAssertTrue(SafetyRules.isSafeToRemove("/Applications/Amazon Kindle.app"))
+        XCTAssertTrue(SafetyRules.isSafeToRemove("/Applications/Some Vendor App.app"))
+        // But protected and shallow neighbors stay refused.
+        XCTAssertFalse(SafetyRules.isSafeToRemove("/Applications/Utilities/Terminal.app"))
+        XCTAssertFalse(SafetyRules.isSafeToRemove("/Volumes/Backup"))
+        XCTAssertFalse(SafetyRules.isSafeToRemove("/tmp/x"))
     }
 
     func testPathTraversalIsRefused() {
