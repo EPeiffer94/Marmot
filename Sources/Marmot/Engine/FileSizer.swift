@@ -32,37 +32,20 @@ enum FileSizer {
         ftsAllocatedBytes(at: path) ?? foundationSize(of: path)
     }
 
-    /// Sums allocated bytes under `path` using the C fts API, or nil if the
-    /// walk couldn't start. All fts lifetime rules live inside this function:
-    /// the argv array must be stable heap memory for the WHOLE traversal
-    /// (fts reads it lazily during fts_read, not just at fts_open).
+    /// Sums allocated bytes under `path` (files plus directory inodes, like
+    /// `du`), or nil if the walk couldn't start.
     private static func ftsAllocatedBytes(at path: String) -> Int64? {
-        guard let dup = strdup(path) else { return nil }
-        let argv = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: 2)
-        argv[0] = dup
-        argv[1] = nil
-        defer {
-            free(dup)
-            argv.deallocate()
-        }
-
-        guard let fts = fts_open(argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else {
-            return nil
-        }
-        defer { fts_close(fts) }
-
         var total: Int64 = 0
-        while let entry = fts_read(fts) {
-            let info = Int32(entry.pointee.fts_info)
-            // Regular files and directory inodes, like `du`. FTS_PHYSICAL
-            // never follows symlinks; FTS_XDEV never crosses volumes.
-            if info == FTS_F || info == FTS_D {
-                if let st = entry.pointee.fts_statp {
-                    total += Int64(st.pointee.st_blocks) * 512
-                }
-            }
-        }
-        return total
+        let opened = FTSWalker.walk(
+            root: path,
+            directoryPre: { _, _, st in
+                if let st { total += Int64(st.pointee.st_blocks) * 512 }
+                return .descend
+            },
+            file: { _, _, st in
+                total += Int64(st.pointee.st_blocks) * 512
+            })
+        return opened ? total : nil
     }
 
     /// Foundation fallback, used only when fts fails to open the path.

@@ -100,46 +100,32 @@ final class DuplicateEngine {
         return groups.sorted { $0.wastedBytes > $1.wastedBytes }
     }
 
-    /// One fts pass per root: stat data (size, device, inode) comes free,
-    /// and packages/cloud folders are pruned without ever entering them.
+    /// One walk per root: stat data (size, device, inode) comes free, and
+    /// packages/cloud folders are pruned without ever entering them.
     private func collectCandidates(root: String,
                                    into bySize: inout [Int64: [(path: String, fileID: String)]]) {
-        guard let dup = strdup(root) else { return }
-        let argv = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: 2)
-        argv[0] = dup
-        argv[1] = nil
-        defer {
-            free(dup)
-            argv.deallocate()
-        }
-        guard let fts = fts_open(argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return }
-        defer { fts_close(fts) }
-
-        while let entry = fts_read(fts) {
-            if isCancelled { return }
-            let info = Int32(entry.pointee.fts_info)
-            let path = String(cString: entry.pointee.fts_path)
-
-            if info == FTS_D {
+        FTSWalker.walk(
+            root: root,
+            isCancelled: { self.isCancelled },
+            directoryPre: { path, _, _ in
                 let ext = ((path as NSString).lastPathComponent as NSString)
                     .pathExtension.lowercased()
                 if Self.skipExtensions.contains(ext)
                     || DiskScanner.cloudRoots.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) {
-                    _ = fts_set(fts, entry, FTS_SKIP)
+                    return .skip
                 }
-                continue
-            }
-
-            guard info == FTS_F, let st = entry.pointee.fts_statp else { continue }
-            let size = Int64(st.pointee.st_size)
-            guard size >= Self.minFileSize else { continue }
-            bySize[size, default: []].append(
-                (path: path, fileID: "\(st.pointee.st_dev):\(st.pointee.st_ino)"))
-            candidateFiles += 1
-            if candidateFiles % 128 == 0 {
-                onPhase?(.collecting(files: candidateFiles))
-            }
-        }
+                return .descend
+            },
+            file: { path, _, st in
+                let size = Int64(st.pointee.st_size)
+                guard size >= Self.minFileSize else { return }
+                bySize[size, default: []].append(
+                    (path: path, fileID: "\(st.pointee.st_dev):\(st.pointee.st_ino)"))
+                self.candidateFiles += 1
+                if self.candidateFiles % 128 == 0 {
+                    self.onPhase?(.collecting(files: self.candidateFiles))
+                }
+            })
     }
 
     /// Picks the copy most worth keeping: organized locations beat the
