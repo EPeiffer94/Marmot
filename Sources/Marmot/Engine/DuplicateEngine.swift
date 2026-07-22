@@ -129,16 +129,17 @@ final class DuplicateEngine {
     }
 
     /// Picks the copy most worth keeping: organized locations beat the
-    /// Downloads dumping ground, clean names beat "report copy (2)", and
-    /// the newest copy breaks ties.
+    /// Downloads dumping ground, clean names beat "report copy (2)", the
+    /// newest copy breaks ties — and the user's past overrides tilt it.
     static func preferredKeeper(among files: [DuplicateFile]) -> DuplicateFile? {
-        files.max { keeperScore($0) == keeperScore($1)
+        let learned = KeeperMemory.weights
+        return files.max { keeperScore($0, learned: learned) == keeperScore($1, learned: learned)
             ? $0.modified < $1.modified
-            : keeperScore($0) < keeperScore($1) }
+            : keeperScore($0, learned: learned) < keeperScore($1, learned: learned) }
     }
 
-    static func keeperScore(_ file: DuplicateFile) -> Int {
-        var score = 0
+    static func keeperScore(_ file: DuplicateFile, learned: [String: Int] = [:]) -> Int {
+        var score = learned[KeeperMemory.bucket(for: file.path)] ?? 0
         let home = SafetyRules.home.lowercased()
         let dir = file.directory.lowercased()
         if dir.hasPrefix(home + "/documents") { score += 40 }
@@ -192,6 +193,39 @@ final class DuplicateEngine {
             }
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// Learned folder preferences: when the user overrides the suggested keeper,
+/// remember which top-level folder won and which lost, and lean that way
+/// next time. Small clamped integer weights — learning never overwhelms the
+/// built-in heuristics, it only tilts ties and near-ties.
+enum KeeperMemory {
+
+    /// The first path component under the user's home ("Documents",
+    /// "Downloads", …), or "other".
+    static func bucket(for path: String) -> String {
+        let home = SafetyRules.home
+        guard path.hasPrefix(home + "/") else { return "other" }
+        let rest = path.dropFirst(home.count + 1)
+        return rest.split(separator: "/").first.map(String.init) ?? "other"
+    }
+
+    static var weights: [String: Int] {
+        (UserDefaults.standard.dictionary(forKey: Prefs.keeperWeights) as? [String: Int]) ?? [:]
+    }
+
+    static func recordOverride(chosen: String, over rejected: String) {
+        let chosenBucket = bucket(for: chosen)
+        let rejectedBucket = bucket(for: rejected)
+        guard chosenBucket != rejectedBucket else { return }
+        var updated = weights
+        updated[chosenBucket, default: 0] += 5
+        updated[rejectedBucket, default: 0] -= 5
+        for (key, value) in updated {
+            updated[key] = max(-25, min(25, value))
+        }
+        UserDefaults.standard.set(updated, forKey: Prefs.keeperWeights)
     }
 }
 

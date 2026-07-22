@@ -25,6 +25,8 @@ enum Prefs {
     static let sentinelEnabled = "marmot.sentinelEnabled"
     /// Startup Sentinel's baseline of known launchd plist paths.
     static let sentinelKnown = "marmot.sentinelKnown"
+    /// Learned duplicate-keeper folder weights (bucket → clamped score).
+    static let keeperWeights = "marmot.keeperWeights"
     /// Notify when the health score drops below this (0 = off).
     static let healthAlertBelow = "marmot.healthAlertBelow"
     /// Unix timestamp of the last health notification (6h debounce).

@@ -26,12 +26,23 @@ enum SuggestionEngine {
             suggestions.append(nudge)
         }
 
-        // Disk nearly full — leads the list when true.
+        // Disk nearly full — leads the list, and points at the biggest wins
+        // (Big Files) rather than just describing the problem.
         if diskTotal > 0, Double(diskFree) / Double(diskTotal) < 0.1 {
             suggestions.append(Suggestion(
                 icon: "exclamationmark.triangle.fill",
-                text: "Disk is over 90% full — only \(ByteFormat.string(diskFree)) left",
-                target: .diskMap))
+                text: "Disk is over 90% full — only \(ByteFormat.string(diskFree)) left. Hunt the biggest wins",
+                target: .bigFiles))
+        }
+
+        // Trash honesty: trash-first cleaning frees nothing until the Trash
+        // empties. Surface what Marmot moved there that's still sitting.
+        let lingering = trashLingeringBytes(entries: historyEntries)
+        if lingering > 500_000_000 {
+            suggestions.append(Suggestion(
+                icon: "trash.circle",
+                text: "\(ByteFormat.string(lingering)) Marmot cleaned is still in the Trash — space frees when it empties",
+                target: .cleanup))
         }
 
         // Oversized cleanup categories.
@@ -85,6 +96,22 @@ enum SuggestionEngine {
         }
 
         return Array(suggestions.prefix(5))
+    }
+
+    /// Bytes Marmot moved to the Trash that are STILL there — the file-exists
+    /// check makes this accurate after partial or full Trash emptying.
+    static func trashLingeringBytes(entries: [LogEntry],
+                                    fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) -> Int64 {
+        entries
+            .filter {
+                !$0.dryRun
+                    && $0.outcome == ItemOutcome.done.rawValue
+                    && $0.action == ChangeAction.moveToTrash.rawValue
+            }
+            .reduce(Int64(0)) { total, entry in
+                guard let trashed = entry.trashedTo, fileExists(trashed) else { return total }
+                return total + entry.sizeBytes
+            }
     }
 
     /// If the user manually cleaned on 3+ separate days in the last month and

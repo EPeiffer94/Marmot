@@ -80,6 +80,75 @@ final class SmartFeatureTests: XCTestCase {
                                                  hasAutopilotRules: false, now: now))
     }
 
+    // MARK: - Trash lingering bytes
+
+    func testTrashLingeringCountsOnlyPresentFiles() {
+        let now = Date()
+        func trashEntry(_ trashedTo: String?, bytes: Int64,
+                        dryRun: Bool = false) -> LogEntry {
+            LogEntry(date: now, source: "Cleanup", dryRun: dryRun,
+                     action: ChangeAction.moveToTrash.rawValue,
+                     target: "/tmp/x", sizeBytes: bytes,
+                     outcome: ItemOutcome.done.rawValue, trashedTo: trashedTo)
+        }
+        let entries = [
+            trashEntry("/T/still-there", bytes: 100),
+            trashEntry("/T/emptied", bytes: 1_000),        // gone from Trash
+            trashEntry(nil, bytes: 10_000),                // not restorable
+            trashEntry("/T/still-there2", bytes: 5, dryRun: true) // dry run
+        ]
+        let lingering = SuggestionEngine.trashLingeringBytes(entries: entries) {
+            $0.hasPrefix("/T/still-there")
+        }
+        XCTAssertEqual(lingering, 100)
+    }
+
+    // MARK: - Sentinel suspicion heuristics
+
+    func testSuspicionFlagsAppleImpersonation() {
+        let home = SafetyRules.home
+        let flags = StartupSentinel.suspicionFlags(
+            plistPath: home + "/Library/LaunchAgents/com.apple.update.plist",
+            label: "com.apple.update", programPath: "")
+        XCTAssertEqual(flags, ["pretends to be Apple software"])
+        // Real Apple items in system dirs are never flagged for this.
+        XCTAssertTrue(StartupSentinel.suspicionFlags(
+            plistPath: "/Library/LaunchAgents/com.vendor.agent.plist",
+            label: "com.vendor.agent", programPath: "/usr/local/bin/agent").isEmpty
+            || !StartupSentinel.suspicionFlags(
+                plistPath: "/Library/LaunchAgents/com.vendor.agent.plist",
+                label: "com.vendor.agent",
+                programPath: "/usr/local/bin/agent").contains("pretends to be Apple software"))
+    }
+
+    func testSuspicionFlagsTempAndHiddenPrograms() {
+        let temp = StartupSentinel.suspicionFlags(
+            plistPath: "/Library/LaunchDaemons/com.foo.plist",
+            label: "com.foo", programPath: "/tmp/payload")
+        XCTAssertTrue(temp.contains("runs a program from a temporary folder"))
+
+        let hidden = StartupSentinel.suspicionFlags(
+            plistPath: "/Library/LaunchDaemons/com.foo.plist",
+            label: "com.foo",
+            programPath: SafetyRules.home + "/.hidden/bin/payload")
+        XCTAssertTrue(hidden.contains("runs a program hidden in a dot-folder"))
+    }
+
+    // MARK: - Keeper memory buckets
+
+    func testKeeperBucketAndLearnedWeights() {
+        let home = SafetyRules.home
+        XCTAssertEqual(KeeperMemory.bucket(for: home + "/Documents/a/b.pdf"), "Documents")
+        XCTAssertEqual(KeeperMemory.bucket(for: home + "/Downloads/x.zip"), "Downloads")
+        XCTAssertEqual(KeeperMemory.bucket(for: "/Volumes/USB/x.zip"), "other")
+
+        let file = DuplicateFile(path: home + "/Downloads/x.zip", sizeBytes: 1,
+                                 modified: Date())
+        let base = DuplicateEngine.keeperScore(file)
+        let tilted = DuplicateEngine.keeperScore(file, learned: ["Downloads": 25])
+        XCTAssertEqual(tilted, base + 25)
+    }
+
     // MARK: - Receipt family matching
 
     func testReceiptFamilyMatch() {
