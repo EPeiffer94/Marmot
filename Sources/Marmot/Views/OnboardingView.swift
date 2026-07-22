@@ -7,6 +7,7 @@ struct OnboardingView: View {
 
     var onDone: () -> Void
     @State private var page = 0
+    @State private var fdaGranted = Permissions.hasFullDiskAccess
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,11 +35,25 @@ struct OnboardingView: View {
                 .frame(maxWidth: 400)
             if page == 2 {
                 Button {
-                    openFullDiskAccessSettings()
+                    Permissions.openFullDiskAccessSettings()
                 } label: {
                     Label("Open Full Disk Access Settings", systemImage: "lock.open")
                 }
                 .buttonStyle(.borderedProminent)
+                // Live status — refreshes when the user returns from Settings.
+                HStack(spacing: 6) {
+                    Image(systemName: fdaGranted ? "checkmark.circle.fill" : "circle.dashed")
+                        .foregroundStyle(fdaGranted ? .green : .secondary)
+                    Text(fdaGranted
+                         ? "Granted — you're all set (relaunch Marmot to apply)"
+                         : "Not granted yet — optional, but recommended")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .onReceive(NotificationCenter.default.publisher(
+                    for: NSApplication.didBecomeActiveNotification)) { _ in
+                    fdaGranted = Permissions.hasFullDiskAccess
+                }
             }
             Spacer()
             HStack(spacing: 6) {

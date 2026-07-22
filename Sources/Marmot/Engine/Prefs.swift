@@ -25,6 +25,8 @@ enum Prefs {
     static let sentinelEnabled = "marmot.sentinelEnabled"
     /// Startup Sentinel's baseline of known launchd plist paths.
     static let sentinelKnown = "marmot.sentinelKnown"
+    /// Last app version whose What's New sheet was shown.
+    static let lastSeenVersion = "marmot.lastSeenVersion"
     /// Learned duplicate-keeper folder weights (bucket → clamped score).
     static let keeperWeights = "marmot.keeperWeights"
     /// Notify when the health score drops below this (0 = off).

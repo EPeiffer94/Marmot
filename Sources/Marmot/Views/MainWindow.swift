@@ -77,6 +77,7 @@ struct MainWindow: View {
     @State var showPalette = false
     @State private var dropTargeted = false
     @State private var toast: FreedToast?
+    @State private var showWhatsNew = false
     @EnvironmentObject var stats: StatsSampler
     @AppStorage(Prefs.onboarded) private var onboarded = false
     @AppStorage(Prefs.accent) private var accentName = ""
@@ -201,6 +202,15 @@ struct MainWindow: View {
             set: { if !$0 { onboarded = true } }
         )) {
             OnboardingView { onboarded = true }
+        }
+        .sheet(isPresented: $showWhatsNew) {
+            WhatsNewView {
+                WhatsNew.markSeen()
+                showWhatsNew = false
+            }
+        }
+        .onAppear {
+            if onboarded && WhatsNew.shouldShow() { showWhatsNew = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: .marmotOpenSettings)) { _ in
             selection = .settings

@@ -6,6 +6,7 @@ struct MenuBarHUD: View {
 
     @EnvironmentObject var stats: StatsSampler
     @ObservedObject private var cleanup = CleanupModel.shared
+    @State private var freedThisWeek: Int64 = 0
 
     var snap: SystemSnapshot { stats.snapshot }
 
@@ -47,15 +48,40 @@ struct MenuBarHUD: View {
                 }
             }
 
-            if cleanup.scannedOnce {
-                Divider()
-                HStack {
-                    Label("Reclaimable junk", systemImage: "sparkles")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(ByteFormat.string(cleanup.totalFound))
-                        .font(.caption.weight(.semibold).monospacedDigit())
+            Group {
+                if cleanup.scannedOnce {
+                    Divider()
+                    HStack {
+                        Label("Reclaimable junk", systemImage: "sparkles")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(ByteFormat.string(cleanup.totalFound))
+                            .font(.caption.weight(.semibold).monospacedDigit())
+                        if !cleanup.scanning {
+                            Button("Smart Scan") { cleanup.rescan() }
+                                .controlSize(.mini)
+                        }
+                    }
+                } else {
+                    Divider()
+                    Button {
+                        cleanup.rescan()
+                    } label: {
+                        Label("Smart Scan", systemImage: "wand.and.stars")
+                            .font(.caption)
+                    }
+                    .controlSize(.small)
+                }
+                if freedThisWeek > 0 {
+                    HStack {
+                        Label("Freed this week", systemImage: "checkmark.seal")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(ByteFormat.string(freedThisWeek))
+                            .font(.caption.weight(.semibold).monospacedDigit())
+                    }
                 }
             }
 
@@ -101,6 +127,10 @@ struct MenuBarHUD: View {
         }
         .padding(12)
         .frame(width: 260)
+        .onAppear {
+            // Read the log once per popover open, not on every 2 s tick.
+            freedThisWeek = OperationLog.shared.freedStats().last7Days
+        }
     }
 
     private func row(_ icon: String, _ label: String, _ value: String,
