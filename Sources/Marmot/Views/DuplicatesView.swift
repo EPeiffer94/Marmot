@@ -147,6 +147,12 @@ struct DuplicatesView: View {
         let isKeeper = file.id == keeperID
         return HStack(spacing: 10) {
             Button {
+                // Overriding the suggested keeper teaches the heuristics
+                // which folders this user actually prefers.
+                if let suggested = DuplicateEngine.preferredKeeper(among: group.files),
+                   suggested.id != file.id {
+                    KeeperMemory.recordOverride(chosen: file.path, over: suggested.path)
+                }
                 keepers[group.id] = file.id
             } label: {
                 Image(systemName: isKeeper ? "star.fill" : "star")

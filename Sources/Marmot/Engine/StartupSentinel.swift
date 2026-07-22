@@ -52,16 +52,31 @@ final class StartupSentinel {
 
             let fresh = Self.newArrivals(current: Array(current.keys), known: known)
             if !fresh.isEmpty {
-                let names = fresh.compactMap { current[$0] }.sorted()
-                let listed = names.prefix(3).joined(separator: ", ")
-                let more = names.count > 3 ? " and \(names.count - 3) more" : ""
-                Notifier.post(
-                    title: names.count == 1
-                        ? "New startup item: \(names[0])"
-                        : "\(names.count) new startup items appeared",
-                    body: "\(listed)\(more) will now launch automatically. "
-                        + "Review it in Marmot → Startup Items.",
-                    identifier: "marmot.sentinel")
+                // Suspicious arrivals get a sharper, specific notification.
+                let flagged: [(label: String, flags: [String])] = fresh.compactMap { path in
+                    guard let info = current[path] else { return nil }
+                    let flags = Self.suspicionFlags(plistPath: path, label: info.label,
+                                                    programPath: info.program)
+                    return flags.isEmpty ? nil : (info.label, flags)
+                }
+                if let worst = flagged.first {
+                    Notifier.post(
+                        title: "⚠️ Suspicious new startup item: \(worst.label)",
+                        body: "It \(worst.flags.joined(separator: ", and ")). "
+                            + "Review it in Marmot → Startup Items before trusting it.",
+                        identifier: "marmot.sentinel")
+                } else {
+                    let names = fresh.compactMap { current[$0]?.label }.sorted()
+                    let listed = names.prefix(3).joined(separator: ", ")
+                    let more = names.count > 3 ? " and \(names.count - 3) more" : ""
+                    Notifier.post(
+                        title: names.count == 1
+                            ? "New startup item: \(names[0])"
+                            : "\(names.count) new startup items appeared",
+                        body: "\(listed)\(more) will now launch automatically. "
+                            + "Review it in Marmot → Startup Items.",
+                        identifier: "marmot.sentinel")
+                }
             }
             UserDefaults.standard.set(Array(current.keys), forKey: Prefs.sentinelKnown)
         }
@@ -73,9 +88,49 @@ final class StartupSentinel {
         return current.filter { !knownSet.contains($0) }
     }
 
-    /// path → human label for every third-party launchd plist.
-    private static func currentPlists() -> [String: String] {
-        var result: [String: String] = [:]
+    // MARK: Suspicion heuristics
+
+    /// Deterministic red flags for a launchd plist. No AI, no guessing —
+    /// each flag is a plain, explainable trait that legitimate software
+    /// rarely has. Purely advisory: Marmot never acts on these alone.
+    static func suspicionFlags(plistPath: String, label: String, programPath: String) -> [String] {
+        var flags: [String] = []
+
+        // Apple impersonation: Apple's own items never live in the user's
+        // LaunchAgents folder.
+        let labelLower = label.lowercased()
+        if plistPath.hasPrefix(SafetyRules.home + "/Library/LaunchAgents/"),
+           labelLower.hasPrefix("com.apple.") || labelLower.hasPrefix("com.apple-") {
+            flags.append("pretends to be Apple software")
+        }
+
+        if !programPath.isEmpty {
+            // Executables in temp folders don't survive reboots honestly.
+            if programPath.hasPrefix("/tmp/") || programPath.hasPrefix("/var/tmp/")
+                || programPath.hasPrefix("/private/tmp/") {
+                flags.append("runs a program from a temporary folder")
+            }
+            // Hidden directories in the program path.
+            let components = programPath.split(separator: "/")
+            if components.dropLast().contains(where: { $0.hasPrefix(".") }) {
+                flags.append("runs a program hidden in a dot-folder")
+            }
+            // The program it points at doesn't exist.
+            if !FileManager.default.fileExists(atPath: programPath) {
+                flags.append("points at a program that doesn't exist")
+            }
+        }
+        return flags
+    }
+
+    struct PlistInfo {
+        let label: String
+        let program: String
+    }
+
+    /// path → label + program for every third-party launchd plist.
+    private static func currentPlists() -> [String: PlistInfo] {
+        var result: [String: PlistInfo] = [:]
         for dir in watchedDirs {
             for path in CleanupScanner.children(of: dir) where path.hasSuffix(".plist") {
                 let fileName = (path as NSString).lastPathComponent
@@ -84,7 +139,17 @@ final class StartupSentinel {
                 // fully, since malware loves to hide there with an
                 // official-sounding name).
                 if dir != watchedDirs[0] && fileName.lowercased().hasPrefix("com.apple.") { continue }
-                result[path] = (fileName as NSString).deletingPathExtension
+                var label = (fileName as NSString).deletingPathExtension
+                var program = ""
+                if let data = FileManager.default.contents(atPath: path),
+                   let plist = try? PropertyListSerialization.propertyList(from: data, format: nil)
+                        as? [String: Any] {
+                    label = (plist["Label"] as? String) ?? label
+                    program = (plist["Program"] as? String)
+                        ?? (plist["ProgramArguments"] as? [String])?.first
+                        ?? ""
+                }
+                result[path] = PlistInfo(label: label, program: program)
             }
         }
         return result
