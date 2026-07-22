@@ -67,23 +67,31 @@ final class DuplicateEngine {
         guard !candidates.isEmpty else { return [] }
         onPhase?(.comparing(done: 0, total: candidates.count))
 
+        // Hashing is disk-bound, not CPU-bound: a reader per core just makes
+        // the disk seek back and forth. A small worker pool pulling indices
+        // from a shared counter finishes faster on every disk type.
         let hashed = LockedCounter()
+        let nextIndex = LockedCounter()
+        let workers = max(2, min(6, ProcessInfo.processInfo.activeProcessorCount))
         var keyed = [(key: String, file: DuplicateFile)?](repeating: nil, count: candidates.count)
         keyed.withUnsafeMutableBufferPointer { buffer in
-            DispatchQueue.concurrentPerform(iterations: candidates.count) { index in
-                if isCancelled { return }
-                let candidate = candidates[index]
-                onProgress?(candidate.path)
-                let done = hashed.increment()
-                if done % 16 == 0 || done == candidates.count {
-                    onPhase?(.comparing(done: done, total: candidates.count))
+            DispatchQueue.concurrentPerform(iterations: workers) { _ in
+                while !isCancelled {
+                    let index = nextIndex.increment() - 1
+                    guard index < candidates.count else { return }
+                    let candidate = candidates[index]
+                    onProgress?(candidate.path)
+                    let done = hashed.increment()
+                    if done % 16 == 0 || done == candidates.count {
+                        onPhase?(.comparing(done: done, total: candidates.count))
+                    }
+                    guard let hash = Self.contentKey(path: candidate.path, size: candidate.size) else { continue }
+                    buffer[index] = (
+                        key: "\(candidate.size):\(hash)",
+                        file: DuplicateFile(path: candidate.path,
+                                            sizeBytes: candidate.size,
+                                            modified: FileSizer.modificationDate(candidate.path) ?? .distantPast))
                 }
-                guard let hash = Self.contentKey(path: candidate.path, size: candidate.size) else { return }
-                buffer[index] = (
-                    key: "\(candidate.size):\(hash)",
-                    file: DuplicateFile(path: candidate.path,
-                                        sizeBytes: candidate.size,
-                                        modified: FileSizer.modificationDate(candidate.path) ?? .distantPast))
             }
         }
         if isCancelled { return [] }

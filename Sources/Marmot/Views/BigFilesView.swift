@@ -3,27 +3,20 @@ import AppKit
 
 /// "Large & Old" hunter: every file over the threshold anywhere in your home
 /// folder, filterable by size and age, sortable, removable trash-first.
+/// Scan state lives in BigFilesModel so results survive navigation.
 struct BigFilesView: View {
 
-    @State private var files: [BigFile] = []
-    @State private var scanning = false
-    @State private var scannedOnce = false
-    @State private var progressPath = ""
-    @State private var foundCount = 0
-    @State private var foundBytes: Int64 = 0
-    @State private var scanner: BigFileScanner?
+    @ObservedObject private var model = BigFilesModel.shared
     @State private var selection: Set<BigFile.ID> = []
     @State private var sortOrder = [KeyPathComparator(\BigFile.sizeBytes, order: .reverse)]
-    @State private var minSizeMB = 100
-    @State private var minAgeDays = 0
     @State private var activePlan: ChangePlan?
 
     private var filtered: [BigFile] {
-        let minBytes = Int64(minSizeMB) * 1024 * 1024
-        let cutoff = minAgeDays > 0
-            ? Date().addingTimeInterval(-Double(minAgeDays) * 86400)
+        let minBytes = Int64(model.minSizeMB) * 1024 * 1024
+        let cutoff = model.minAgeDays > 0
+            ? Date().addingTimeInterval(-Double(model.minAgeDays) * 86400)
             : Date.distantFuture
-        return files
+        return model.files
             .filter { $0.sizeBytes >= minBytes && $0.modified < cutoff }
             .sorted(using: sortOrder)
     }
@@ -38,9 +31,9 @@ struct BigFilesView: View {
 
     var body: some View {
         Group {
-            if scanning {
+            if model.scanning {
                 scanningState
-            } else if !scannedOnce {
+            } else if !model.scannedOnce {
                 startState
             } else if filtered.isEmpty {
                 EmptyState(icon: "externaldrive",
@@ -57,15 +50,15 @@ struct BigFilesView: View {
                 if let r = result, !r.dryRun { startScan() }
             }
         }
-        .navigationSubtitle(scannedOnce
+        .navigationSubtitle(model.scannedOnce
             ? "\(filtered.count) files — selected \(ByteFormat.string(selectedBytes))"
             : "")
         .onReceive(NotificationCenter.default.publisher(for: .marmotBigFilesIntent)) { note in
             let requestedSize = note.userInfo?["minSizeMB"] as? Int ?? 100
             let requestedAge = note.userInfo?["minAgeDays"] as? Int ?? 0
-            minSizeMB = [5000, 1000, 500, 100].first { $0 <= max(requestedSize, 100) } ?? 100
-            minAgeDays = requestedAge >= 365 ? 365 : (requestedAge >= 180 ? 180 : 0)
-            if !scannedOnce && !scanning { startScan() }
+            model.minSizeMB = [5000, 1000, 500, 100].first { $0 <= max(requestedSize, 100) } ?? 100
+            model.minAgeDays = requestedAge >= 365 ? 365 : (requestedAge >= 180 ? 180 : 0)
+            if !model.scannedOnce && !model.scanning { startScan() }
         }
     }
 
@@ -83,10 +76,10 @@ struct BigFilesView: View {
 
     private var scanningState: some View {
         ScanningStateView(
-            title: foundCount > 0
-                ? "Found \(foundCount) big files — \(ByteFormat.string(foundBytes)) so far"
+            title: model.foundCount > 0
+                ? "Found \(model.foundCount) big files — \(ByteFormat.string(model.foundBytes)) so far"
                 : "Hunting big files…",
-            path: progressPath) { scanner?.isCancelled = true }
+            path: model.progressPath) { model.cancel() }
     }
 
     // MARK: Table
@@ -120,7 +113,7 @@ struct BigFilesView: View {
         }
         .contextMenu(forSelectionType: BigFile.ID.self) { ids in
             Button("Reveal in Finder") {
-                if let file = files.first(where: { ids.contains($0.id) }) {
+                if let file = model.files.first(where: { ids.contains($0.id) }) {
                     NSWorkspace.shared.selectFile(file.path, inFileViewerRootedAtPath: "")
                 }
             }
@@ -132,13 +125,13 @@ struct BigFilesView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup {
-            Picker("Min size", selection: $minSizeMB) {
+            Picker("Min size", selection: $model.minSizeMB) {
                 Text("100 MB+").tag(100)
                 Text("500 MB+").tag(500)
                 Text("1 GB+").tag(1000)
                 Text("5 GB+").tag(5000)
             }
-            Picker("Age", selection: $minAgeDays) {
+            Picker("Age", selection: $model.minAgeDays) {
                 Text("Any age").tag(0)
                 Text("6+ months").tag(180)
                 Text("1+ year").tag(365)
@@ -149,7 +142,7 @@ struct BigFilesView: View {
                 Label("Rescan", systemImage: "arrow.clockwise")
             }
             .keyboardShortcut("r", modifiers: .command)
-            .disabled(scanning)
+            .disabled(model.scanning)
             Button {
                 buildPlan()
             } label: {
@@ -158,35 +151,15 @@ struct BigFilesView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(Theme.accent)
-            .disabled(selection.isEmpty || scanning)
+            .disabled(selection.isEmpty || model.scanning)
         }
     }
 
     // MARK: Actions
 
     private func startScan() {
-        scanning = true
-        scannedOnce = true
         selection = []
-        foundCount = 0
-        foundBytes = 0
-        let s = BigFileScanner()
-        scanner = s
-        s.onProgress = { path in
-            DispatchQueue.main.async { progressPath = path }
-        }
-        s.onFound = { count, bytes in
-            DispatchQueue.main.async {
-                foundCount = count
-                foundBytes = bytes
-            }
-        }
-        Task { @MainActor in
-            files = await Task.detached(priority: .userInitiated) {
-                s.scan(root: NSHomeDirectory())
-            }.value
-            scanning = false
-        }
+        model.startScan()
     }
 
     private func buildPlan() {

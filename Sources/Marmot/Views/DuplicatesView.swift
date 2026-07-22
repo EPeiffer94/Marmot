@@ -4,34 +4,19 @@ import AppKit
 /// Duplicate file finder: identical-content files grouped visually.
 /// Pick which copy to keep in each group; the rest go through the usual
 /// change preview (trash-first, dry-runnable).
+/// Scan state lives in DuplicatesModel so results survive navigation.
 struct DuplicatesView: View {
 
-    @State private var groups: [DuplicateGroup] = []
-    @State private var keepers: [UUID: UUID] = [:]     // group id → file id to keep
-    @State private var includedGroups: Set<UUID> = []
-    @State private var scanning = false
-    @State private var scannedOnce = false
-    @State private var progressPath = ""
-    @State private var phase: DuplicateEngine.ScanPhase?
-    @State private var roots: [String] = [
-        NSHomeDirectory() + "/Downloads",
-        NSHomeDirectory() + "/Documents",
-        NSHomeDirectory() + "/Desktop"
-    ]
+    @ObservedObject private var model = DuplicatesModel.shared
     @State private var activePlan: ChangePlan?
-    @State private var engine: DuplicateEngine?
-
-    var totalWasted: Int64 {
-        groups.filter { includedGroups.contains($0.id) }.reduce(0) { $0 + $1.wastedBytes }
-    }
 
     var body: some View {
         Group {
-            if scanning {
+            if model.scanning {
                 scanningState
-            } else if !scannedOnce {
+            } else if !model.scannedOnce {
                 startState
-            } else if groups.isEmpty {
+            } else if model.groups.isEmpty {
                 EmptyState(icon: "doc.on.doc",
                            title: "No duplicates found",
                            message: "No identical files over 1 MB in the scanned folders. Nice and tidy! ✨")
@@ -43,11 +28,11 @@ struct DuplicatesView: View {
         .sheet(item: $activePlan) { plan in
             PlanPreviewView(plan: plan, allowUserFiles: true) { result in
                 activePlan = nil
-                if let r = result, !r.dryRun { startScan() }
+                if let r = result, !r.dryRun { model.startScan() }
             }
         }
-        .navigationSubtitle(scannedOnce && !groups.isEmpty
-            ? "\(groups.count) duplicate groups — \(ByteFormat.string(totalWasted)) reclaimable"
+        .navigationSubtitle(model.scannedOnce && !model.groups.isEmpty
+            ? "\(model.groups.count) duplicate groups — \(ByteFormat.string(model.totalWasted)) reclaimable"
             : "")
     }
 
@@ -61,10 +46,10 @@ struct DuplicatesView: View {
                         + "removals are trash-first and previewed like everything else.",
                     buttonLabel: "Scan for Duplicates",
                     tint: Theme.color(for: .duplicates),
-                    action: { startScan() },
+                    action: { model.startScan() },
                     extra: {
                         VStack(spacing: 4) {
-                            ForEach(roots, id: \.self) { root in
+                            ForEach(model.roots, id: \.self) { root in
                                 Text(root)
                                     .font(.caption.monospaced())
                                     .foregroundStyle(.tertiary)
@@ -75,17 +60,17 @@ struct DuplicatesView: View {
 
     @ViewBuilder
     private var scanningState: some View {
-        switch phase {
+        switch model.phase {
         case .comparing(let done, let total):
             ScanningStateView(title: "Comparing \(done) of \(total) candidates…",
                               progress: (done: done, total: total),
-                              path: progressPath) { engine?.isCancelled = true }
+                              path: model.progressPath) { model.cancel() }
         case .collecting(let files):
             ScanningStateView(title: "Cataloguing files… \(files) candidates so far",
-                              path: progressPath) { engine?.isCancelled = true }
+                              path: model.progressPath) { model.cancel() }
         case nil:
             ScanningStateView(title: "Cataloguing files…",
-                              path: progressPath) { engine?.isCancelled = true }
+                              path: model.progressPath) { model.cancel() }
         }
     }
 
@@ -93,10 +78,10 @@ struct DuplicatesView: View {
 
     private var groupList: some View {
         List {
-            ForEach(groups) { group in
+            ForEach(model.groups) { group in
                 Section {
                     groupHeader(group)
-                    if includedGroups.contains(group.id) {
+                    if model.includedGroups.contains(group.id) {
                         ForEach(group.files) { file in
                             fileRow(file: file, group: group)
                         }
@@ -110,12 +95,12 @@ struct DuplicatesView: View {
     private func groupHeader(_ group: DuplicateGroup) -> some View {
         HStack(spacing: 10) {
             Toggle("", isOn: Binding(
-                get: { includedGroups.contains(group.id) },
+                get: { model.includedGroups.contains(group.id) },
                 set: { on in
                     if on {
-                        includedGroups.insert(group.id)
+                        model.includedGroups.insert(group.id)
                     } else {
-                        includedGroups.remove(group.id)
+                        model.includedGroups.remove(group.id)
                     }
                 }
             ))
@@ -137,13 +122,8 @@ struct DuplicatesView: View {
         .padding(.vertical, 2)
     }
 
-    /// User's explicit choice wins; otherwise the smart-keeper heuristics.
-    private func keeperID(for group: DuplicateGroup) -> UUID? {
-        keepers[group.id] ?? DuplicateEngine.preferredKeeper(among: group.files)?.id
-    }
-
     private func fileRow(file: DuplicateFile, group: DuplicateGroup) -> some View {
-        let keeperID = keeperID(for: group)
+        let keeperID = model.keeperID(for: group)
         let isKeeper = file.id == keeperID
         return HStack(spacing: 10) {
             Button {
@@ -153,7 +133,7 @@ struct DuplicatesView: View {
                    suggested.id != file.id {
                     KeeperMemory.recordOverride(chosen: file.path, over: suggested.path)
                 }
-                keepers[group.id] = file.id
+                model.keepers[group.id] = file.id
             } label: {
                 Image(systemName: isKeeper ? "star.fill" : "star")
                     .foregroundStyle(isKeeper ? .yellow : .secondary)
@@ -179,6 +159,11 @@ struct DuplicatesView: View {
             Text(file.modified.formatted(date: .abbreviated, time: .omitted))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Button("Peek") {
+                QuickLook.show(path: file.path)
+            }
+            .controlSize(.small)
+            .help("Quick Look this copy before deciding which to keep")
             Button("Reveal") {
                 NSWorkspace.shared.selectFile(file.path, inFileViewerRootedAtPath: "")
             }
@@ -198,14 +183,14 @@ struct DuplicatesView: View {
             } label: {
                 Label("Add Folder", systemImage: "folder.badge.plus")
             }
-            .disabled(scanning)
+            .disabled(model.scanning)
             Button {
-                startScan()
+                model.startScan()
             } label: {
                 Label("Rescan", systemImage: "arrow.clockwise")
             }
             .keyboardShortcut("r", modifiers: .command)
-            .disabled(scanning)
+            .disabled(model.scanning)
             Button {
                 buildPlan()
             } label: {
@@ -214,7 +199,7 @@ struct DuplicatesView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(Theme.accent)
-            .disabled(scanning || totalWasted == 0)
+            .disabled(model.scanning || model.totalWasted == 0)
             .help("Preview the removal of all non-keeper copies. Trash-first and dry-runnable.")
         }
     }
@@ -225,48 +210,16 @@ struct DuplicatesView: View {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        if panel.runModal() == .OK, let url = panel.url, !roots.contains(url.path) {
-            roots.append(url.path)
-            if scannedOnce { startScan() }
-        }
-    }
-
-    private func startScan() {
-        scanning = true
-        scannedOnce = true
-        groups = []
-        keepers = [:]
-        includedGroups = []
-        phase = nil
-        let e = DuplicateEngine()
-        engine = e
-        e.onProgress = { path in
-            DispatchQueue.main.async { progressPath = path }
-        }
-        e.onPhase = { p in
-            DispatchQueue.main.async { phase = p }
-        }
-        let scanRoots = roots.filter { FileManager.default.fileExists(atPath: $0) }
-        Task { @MainActor in
-            let found = await Task.detached(priority: .userInitiated) { e.scan(roots: scanRoots) }.value
-            if e.isCancelled {
-                // Cancelled: return to the start screen, not a misleading
-                // "no duplicates found" empty state.
-                scannedOnce = false
-            } else {
-                groups = found
-                includedGroups = Set(found.map(\.id))
-            }
-            phase = nil
-            progressPath = ""
-            scanning = false
+        if panel.runModal() == .OK, let url = panel.url, !model.roots.contains(url.path) {
+            model.roots.append(url.path)
+            if model.scannedOnce { model.startScan() }
         }
     }
 
     private func buildPlan() {
         var items: [ChangeItem] = []
-        for group in groups where includedGroups.contains(group.id) {
-            let keeperID = keeperID(for: group)
+        for group in model.groups where model.includedGroups.contains(group.id) {
+            let keeperID = model.keeperID(for: group)
             guard let keeper = group.files.first(where: { $0.id == keeperID }) else { continue }
             for file in group.files where file.id != keeper.id {
                 items.append(ChangeItem(
