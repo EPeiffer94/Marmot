@@ -5,33 +5,26 @@ import AppKit
 /// large-file list, trash-first removal with plan preview.
 struct DiskMapView: View {
 
-    @State private var rootNode: FileNode?
-    @State private var currentNode: FileNode?
-    @State private var largeFiles: [LargeFile] = []
-    @State private var scanning = false
-    @State private var progressPath = ""
-    @State private var scanTarget = NSHomeDirectory()
+    @ObservedObject private var model = DiskMapModel.shared
     @State private var activePlan: ChangePlan?
     @State private var showLargeFiles = false
-    @State private var scanner: DiskScanner?
     @State private var hoveredNode: FileNode?
-    @State private var folderMovers: FolderTrends.Movers?
     @State private var showTimeTravel = false
 
     /// Prefer the current scan root's history; fall back to any root that has one.
     private var timeTravelRoot: String? {
-        if FolderTrends.shared.history(for: scanTarget).count >= 2 { return scanTarget }
+        if FolderTrends.shared.history(for: model.scanTarget).count >= 2 { return model.scanTarget }
         return FolderTrends.shared.rootsWithHistory.first
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if scanning {
+            if model.scanning {
                 scanningState
-            } else if let node = currentNode {
+            } else if let node = model.currentNode {
                 breadcrumb(node)
                 Divider()
-                if let movers = folderMovers, node.id == rootNode?.id {
+                if let movers = model.folderMovers, node.id == model.rootNode?.id {
                     moversStrip(movers)
                     Divider()
                 }
@@ -39,7 +32,7 @@ struct DiskMapView: View {
                     largeFileList
                 } else {
                     TreemapView(node: node,
-                                onDescend: { currentNode = $0 },
+                                onDescend: { model.currentNode = $0 },
                                 onDelete: { proposeDelete($0) },
                                 onHoverNode: { hoveredNode = $0 })
                     Divider()
@@ -53,7 +46,7 @@ struct DiskMapView: View {
         .sheet(item: $activePlan) { plan in
             PlanPreviewView(plan: plan, allowPurgeRoots: true) { result in
                 activePlan = nil
-                if let r = result, !r.dryRun { startScan() }
+                if let r = result, !r.dryRun { model.startScan() }
             }
         }
         .sheet(isPresented: $showTimeTravel) {
@@ -64,7 +57,7 @@ struct DiskMapView: View {
                 }
             }
         }
-        .navigationSubtitle(currentNode.map { "\($0.path) — \(ByteFormat.string($0.sizeBytes))" } ?? "")
+        .navigationSubtitle(model.currentNode.map { "\($0.path) — \(ByteFormat.string($0.sizeBytes))" } ?? "")
     }
 
     // MARK: States
@@ -75,7 +68,7 @@ struct DiskMapView: View {
                     message: "Visualizes where your disk space goes as an interactive treemap. Click a block to zoom in, right-click to reveal or remove. Removal always goes through the change preview.",
                     buttonLabel: "Scan Home Folder",
                     tint: Theme.color(for: .diskMap),
-                    action: { scanTarget = NSHomeDirectory(); startScan() },
+                    action: { model.scanTarget = NSHomeDirectory(); model.startScan() },
                     extra: {
                         Button {
                             pickFolder()
@@ -87,15 +80,15 @@ struct DiskMapView: View {
     }
 
     private var scanningState: some View {
-        ScanningStateView(title: "Measuring \(scanTarget)…",
-                          path: progressPath) { scanner?.isCancelled = true }
+        ScanningStateView(title: "Measuring \(model.scanTarget)…",
+                          path: model.progressPath) { model.cancel() }
     }
 
     private func breadcrumb(_ node: FileNode) -> some View {
         HStack(spacing: 4) {
             ForEach(ancestry(of: node), id: \.id) { ancestor in
                 Button {
-                    currentNode = ancestor
+                    model.currentNode = ancestor
                 } label: {
                     Text(ancestor.name)
                         .font(.callout.weight(ancestor.id == node.id ? .semibold : .regular))
@@ -174,7 +167,7 @@ struct DiskMapView: View {
     }
 
     private var largeFileList: some View {
-        List(largeFiles) { file in
+        List(model.largeFiles) { file in
             HStack {
                 Image(systemName: "doc")
                     .foregroundStyle(.secondary)
@@ -205,7 +198,7 @@ struct DiskMapView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup {
-            if rootNode != nil {
+            if model.rootNode != nil {
                 Picker("View", selection: $showLargeFiles) {
                     Label("Treemap", systemImage: "square.grid.3x3.topleft.filled").tag(false)
                     Label("Large Files", systemImage: "doc.badge.ellipsis").tag(true)
@@ -226,14 +219,14 @@ struct DiskMapView: View {
             } label: {
                 Label("Choose Folder", systemImage: "folder")
             }
-            .disabled(scanning)
+            .disabled(model.scanning)
             Button {
-                startScan()
+                model.startScan()
             } label: {
                 Label("Rescan", systemImage: "arrow.clockwise")
             }
             .keyboardShortcut("r", modifiers: .command)
-            .disabled(scanning)
+            .disabled(model.scanning)
         }
     }
 
@@ -244,31 +237,10 @@ struct DiskMapView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.directoryURL = URL(fileURLWithPath: scanTarget)
+        panel.directoryURL = URL(fileURLWithPath: model.scanTarget)
         if panel.runModal() == .OK, let url = panel.url {
-            scanTarget = url.path
-            startScan()
-        }
-    }
-
-    private func startScan() {
-        scanning = true
-        rootNode = nil
-        currentNode = nil
-        let target = scanTarget
-        let s = DiskScanner()
-        scanner = s
-        s.onProgress = { path in
-            DispatchQueue.main.async { progressPath = path }
-        }
-        Task { @MainActor in
-            let tree = await Task.detached(priority: .userInitiated) { s.scan(root: target) }.value
-            rootNode = tree
-            currentNode = tree
-            largeFiles = s.largeFiles
-            scanning = false
-            FolderTrends.shared.record(root: target, children: tree.children)
-            folderMovers = FolderTrends.shared.movers(root: target)
+            model.scanTarget = url.path
+            model.startScan()
         }
     }
 
