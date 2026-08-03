@@ -4,18 +4,26 @@ Thanks for wanting to help! Marmot is a free, open-source Mac utility, and contr
 
 ## Getting started
 
-You'll need macOS 26+ and Xcode 26 (or the matching Swift toolchain).
+You'll need macOS 26+ and **full Xcode 26** — free from the App Store, no paid developer account required.
 
 ```sh
 git clone https://github.com/EPeiffer94/Marmot.git
 cd Marmot
 make run        # builds Marmot.app and launches it
-swift test      # runs the safety-rule test suite (needs full Xcode)
+swift test      # runs the safety-rule test suite
 ```
 
 CI runs `swift build`, `swift test`, and SwiftLint on every push — green checks required to merge.
 
-> ⚠️ **Heads-up:** CI compiles with an older Swift than you may have locally. Prefer explicit loops over long chained generic expressions (`.map{}.filter{}.sorted{}` with tuples) — they can time out the older type checker.
+> ⚠️ **Command Line Tools alone won't build Marmot.** Modern SwiftUI implements `@State` and friends as macros, and the macro plugins ship only with full Xcode. CLT-only fails with `external macro implementation type 'SwiftUIMacros.StateMacro' could not be found` in every view. If Xcode is installed but you still hit it:
+> ```sh
+> sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+> ```
+
+### Two compiler traps worth knowing
+
+- **"Unable to type-check this expression in reasonable time"** in a SwiftUI view is almost never about the line it blames — it's the whole `body` chain exceeding the solver's budget. Annotating types inside the closure just moves the error. Split `body` into stages and lift closure bodies into named methods; `MainWindow.swift` shows the pattern.
+- Prefer explicit loops over long chained generic expressions (`.map{}.filter{}.sorted{}` with tuples) — they're the usual trigger.
 
 ## The one rule that matters: preview-first 🛡️
 
