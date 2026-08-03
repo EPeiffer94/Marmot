@@ -1,16 +1,13 @@
 import SwiftUI
 
-/// Liquid Glass (macOS 26+) with a graceful fallback everywhere else.
+/// Liquid Glass surfaces.
 ///
-/// Two gates, and both are necessary:
-///
-/// 1. `#if compiler(>=6.2)` — `glassEffect` only EXISTS in the macOS 26 SDK
-///    (shipped with Xcode 26 / Swift 6.2). On an older toolchain the symbol
-///    is unknown, so `#available` alone would still fail to compile. This
-///    keeps the project building on older CI runners and contributor Macs.
-///
-/// 2. `if #available(macOS 26.0, *)` — runtime gate, so the macOS 13 floor
-///    is preserved: older systems get the material look they always had.
+/// Marmot's deployment target is macOS 26, so no runtime `#available` gate
+/// is needed — but `glassEffect` only EXISTS in the macOS 26 SDK (Xcode 26 /
+/// Swift 6.2). The `#if compiler` gate keeps the package parsing and
+/// building on an older toolchain (a contributor's Mac, a stale CI image)
+/// instead of failing on an unknown symbol; those builds simply fall back
+/// to the material look.
 ///
 /// Deliberately applied only to Marmot's *floating* surfaces (toast, drop
 /// overlay, command palette). Apple's guidance is that Liquid Glass belongs
@@ -19,15 +16,10 @@ import SwiftUI
 /// pastel washes.
 extension View {
 
-    /// Liquid Glass on macOS 26+, `.regularMaterial` below it.
     @ViewBuilder
     func marmotGlass<S: Shape>(in shape: S) -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            self.glassEffect(.regular, in: shape)
-        } else {
-            self.background(.regularMaterial, in: shape)
-        }
+        self.glassEffect(.regular, in: shape)
         #else
         self.background(.regularMaterial, in: shape)
         #endif
@@ -37,11 +29,7 @@ extension View {
     @ViewBuilder
     func marmotGlass<S: Shape>(in shape: S, tint: Color) -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            self.glassEffect(.regular.tint(tint), in: shape)
-        } else {
-            self.background(.regularMaterial, in: shape)
-        }
+        self.glassEffect(.regular.tint(tint), in: shape)
         #else
         self.background(.regularMaterial, in: shape)
         #endif

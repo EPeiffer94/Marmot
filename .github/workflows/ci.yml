@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
       - name: Build (release)
@@ -16,7 +16,7 @@ jobs:
         run: swift test
 
   lint:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install SwiftLint (if not preinstalled)

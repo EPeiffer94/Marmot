@@ -29,7 +29,7 @@ item = f"""    <item>
       <pubDate>{email.utils.formatdate(localtime=True)}</pubDate>
       <sparkle:version>{os.environ["BUILD_NUM"]}</sparkle:version>
       <sparkle:shortVersionString>{ver}</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
       <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v{ver}/{zip_name}" {os.environ["SIG_ATTRS"].strip()} type="application/octet-stream" />
     </item>"""
 

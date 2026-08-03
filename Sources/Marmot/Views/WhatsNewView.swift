@@ -10,12 +10,12 @@ enum WhatsNew {
     }
 
     static let highlights: [(icon: String, text: String)] = [
+        ("sparkles",
+         "Marmot is rebuilt for macOS 26 — Liquid Glass on the toast, drop target, and ⌘K palette, with the system chrome to match."),
         ("gauge.with.needle",
-         "The health score now shows its receipt — every factor, its live reading, and the exact points it costs."),
-        ("chart.line.uptrend.xyaxis",
-         "CPU and memory carry rolling 60-second sparklines, and you can be alerted when health drops below your threshold."),
+         "The health score shows its receipt — every factor, its live reading, and the exact points it costs."),
         ("light.beacon.max",
-         "Startup Sentinel now calls out suspicious new launch items — Apple impersonators, programs in temp or hidden folders."),
+         "Startup Sentinel calls out suspicious new launch items — Apple impersonators, programs in temp or hidden folders."),
         ("bolt",
          "Scan results survive navigation, app sizes appear instantly on relaunch, and duplicate hashing is easier on your disk.")
     ]
