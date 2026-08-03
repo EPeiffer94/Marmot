@@ -232,24 +232,35 @@ struct MainWindow: View {
                 toast = FreedToast(freed: result.freedBytes, restorables: restorables)
             }
         }
-        .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
-            var handled = false
-            for provider in providers {
-                // Explicit types throughout: the inferred form pushed the
-                // type checker past its budget on newer compilers.
-                _ = provider.loadObject(ofClass: URL.self) { (url: URL?, _: Error?) in
-                    guard let url: URL = url else { return }
-                    guard url.pathExtension == "app" else { return }
-                    let path: String = url.path
-                    DispatchQueue.main.async {
-                        NotificationCenter.default.post(
-                            name: .marmotDroppedApp, object: nil,
-                            userInfo: ["appPath": path])
-                    }
-                }
-                handled = true
+        .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: handleDrop)
+    }
+
+    // MARK: Drop handling
+    //
+    // Deliberately OUTSIDE the ViewBuilder chain. Inline, this closure was
+    // type-checked as part of `body`'s very long modifier chain and blew the
+    // solver's budget ("unable to type-check in reasonable time"). As plain
+    // methods each piece is checked on its own and compiles instantly.
+
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        var handled = false
+        for provider in providers {
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                Self.announceDroppedApp(url)
             }
-            return handled
+            handled = true
+        }
+        return handled
+    }
+
+    /// Posts the dropped-app intent for any .app bundle.
+    private static func announceDroppedApp(_ url: URL?) {
+        guard let url else { return }
+        guard url.pathExtension == "app" else { return }
+        let info: [String: Any] = ["appPath": url.path]
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .marmotDroppedApp, object: nil, userInfo: info)
         }
     }
 
