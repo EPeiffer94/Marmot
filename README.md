@@ -75,13 +75,26 @@ And even then: removals are **trash-first** (recoverable — and restorable stra
 | **Disk treemap** | ✅ | ✅ | ❌ | ✅ |
 | **Disk Time Travel** (scrub folder history) | ✅ | ❌ | ❌ | ❌ |
 | **New-startup-item alerts** (the day something installs itself) | ✅ | ❌ | ❌ | ❌ |
+| **Explainable health score** (shows every factor and its cost) | ✅ | ❌ | ❌ | ❌ |
 | **Scheduled auto-clean rules** | ✅ | ❌ | ❌ | ❌ |
 | **App update checker** (brew + Sparkle + App Store) | ✅ | ✅ | ❌ | ❌ |
 | **Menu bar system monitor** | ✅ | ✅ | ❌ | ❌ |
 
 ¹ Sold separately as a second paid app.
 
-*Based on publicly listed features as of July 2026 — competitors evolve, and each is good at what it does. Spotted an error? PRs welcome.*
+*Based on publicly listed features as of August 2026 — competitors evolve, and each is good at what it does. Spotted an error? PRs welcome.*
+
+---
+
+## 🪟 Looks the part
+
+Marmot 4.0 is built for macOS 26. The floating layer — the ⌘K command palette, the drag-to-uninstall target, the freed-space toast — renders in **Liquid Glass**, with toolbars, sidebar, and sheets picking up the system material. Applied deliberately, not everywhere: glass belongs to the controls layer, so data tables and dashboard cards keep solid, readable surfaces.
+
+Then make it yours — **five color themes** in Settings, each a coordinated set of pastels spread across the tools rather than a single flat tint:
+
+🎨 **Classic** (mint · green · pink · blue) · 🌊 **Ocean** · 🍬 **Bubblegum** · 🌿 **Meadow** · 🍧 **Sorbet**
+
+Risk badges and health colors never change with the theme — those mean something.
 
 ---
 
@@ -169,13 +182,18 @@ The signing key lives in the maintainer's Keychain — keep an exported backup s
 
 ## 🚀 Building from source
 
-macOS 26+ and Xcode 26 (free) or the matching Swift toolchain:
+macOS 26+ and **full Xcode 26** (free from the App Store — no paid developer account needed):
 
 ```sh
 git clone https://github.com/EPeiffer94/Marmot.git
 cd Marmot
 make run
 ```
+
+> ⚠️ **Command Line Tools alone are not enough.** Modern SwiftUI implements `@State` and friends as macros, and the macro plugins ship only with full Xcode. A CLT-only machine fails with `external macro implementation type 'SwiftUIMacros.StateMacro' could not be found`. If you have Xcode installed but still hit it, point the toolchain at it:
+> ```sh
+> sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+> ```
 
 ```
 Sources/Marmot/
@@ -185,6 +203,8 @@ Sources/Marmot/
 ```
 
 Read `Engine/SafetyRules.swift` first — it's the constitution everything else obeys. CI runs build + tests + SwiftLint on every push.
+
+> 💡 Hitting *"unable to type-check this expression in reasonable time"* in a view? It's almost never the line the compiler blames — it's the whole `body` chain. Split `body` into stages and pull closure bodies into named methods (`MainWindow.swift` shows the pattern).
 
 ---
 
