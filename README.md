@@ -2,7 +2,7 @@
 
 **A free, open-source Mac cleaner that shows you everything before it touches anything.**
 
-Marmot cleans, uninstalls, automates, analyzes, watches, and monitors your Mac — fifteen tools in one lightweight native app, dressed in friendly pastels (with five switchable color themes). Think CleanMyMac + AppCleaner + DaisyDisk + iStat Menus + MacUpdater, except it's free, MIT-licensed, self-updating, and *obsessively* transparent about what it's doing. 💛
+Marmot cleans, uninstalls, automates, analyzes, watches, and monitors your Mac — fifteen tools in one lightweight native app, built for macOS 26 with **Liquid Glass** and dressed in friendly pastels (five switchable color themes). Think CleanMyMac + AppCleaner + DaisyDisk + iStat Menus + MacUpdater, except it's free, MIT-licensed, self-updating, and *obsessively* transparent about what it's doing. 💛
 
 Inspired by the wonderful [Mole CLI](https://github.com/tw93/mole), rebuilt from scratch in Swift/SwiftUI.
 
@@ -21,6 +21,8 @@ Inspired by the wonderful [Mole CLI](https://github.com/tw93/mole), rebuilt from
 
 ## 📦 Install
 
+**Requires macOS 26 (Tahoe) or later.**
+
 **Homebrew** (recommended):
 
 ```sh
@@ -30,6 +32,8 @@ brew install --cask EPeiffer94/marmot/marmot
 **Or manually:** grab the latest `Marmot-x.x.x.zip` from the [**Releases page**](https://github.com/EPeiffer94/Marmot/releases), unzip, and drag **Marmot.app** into **Applications**.
 
 Either way, from then on Marmot updates itself — signed, verified, one click.
+
+> 🕰️ **On macOS 13–15?** [Marmot 3.2.0](https://github.com/EPeiffer94/Marmot/releases/tag/v3.2.0) is the final release for you, and it's a complete, safe, fully-featured app — every tool described below except the Liquid Glass coat of paint. Marmot won't offer you an update it can't run.
 
 **First launch only:** Marmot is free community software, not notarized through Apple's paid program, so macOS balks once. Double-click Marmot → click **OK** (not "Move to Trash"!) → **System Settings → Privacy & Security → "Open Anyway"** → confirm. That's the whole dance, forever. 💃
 
@@ -110,8 +114,10 @@ And even then: removals are **trash-first** (recoverable — and restorable stra
 | ⚡ | **Startup Items** | Every login item, agent, and daemon in plain English — plus **Startup Sentinel** 🗼, which notifies you the day something new starts launching at boot |
 | 🔧 | **Maintenance** | Flush DNS, rebuild Spotlight, thin Time Machine snapshots… each task shows its *exact commands* first |
 | 📊 | **Live Status** | Per-core CPU, GPU, memory, disk I/O, network graphs, battery health — plus a built-in **internet speed test** |
-| 🎛️ | **Menu bar HUD** | Live CPU% up top; click for a mini dashboard, junk alerts included |
+| 🎛️ | **Menu bar HUD** | Live CPU% up top; click for a mini dashboard with Smart Scan, junk alerts, and what you freed this week |
 | 🕰️ | **History** | Every change and dry run, filterable — with one-click **Restore** from the Trash |
+
+**📊 Live Status** deserves its own note: the health score isn't a number Marmot asks you to trust. It shows its **receipt** — every factor (CPU, memory pressure, disk space, thermal state, battery) with its live reading and the exact points it's costing. Rolling sparklines, and an optional notification when health drops below your threshold.
 
 > 💡 Several of these — App Reset, background update watching, new-startup-item alerts, scheduled cleaning, time-capsule uninstalls — are paid features elsewhere. Here they're just… features.
 
