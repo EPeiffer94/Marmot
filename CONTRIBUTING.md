@@ -4,7 +4,7 @@ Thanks for wanting to help! Marmot is a free, open-source Mac utility, and contr
 
 ## Getting started
 
-You'll need macOS 13+ and Xcode (or the full Swift toolchain).
+You'll need macOS 26+ and Xcode 26 (or the matching Swift toolchain).
 
 ```sh
 git clone https://github.com/EPeiffer94/Marmot.git

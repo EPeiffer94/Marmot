@@ -163,7 +163,7 @@ The signing key lives in the maintainer's Keychain — keep an exported backup s
 
 ## 🚀 Building from source
 
-macOS 13+ and Xcode (free) or the full Swift toolchain:
+macOS 26+ and Xcode 26 (free) or the matching Swift toolchain:
 
 ```sh
 git clone https://github.com/EPeiffer94/Marmot.git
