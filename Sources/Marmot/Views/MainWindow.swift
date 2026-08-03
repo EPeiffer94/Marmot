@@ -94,7 +94,15 @@ struct MainWindow: View {
         _selection = State(initialValue: saved.flatMap(SidebarSection.init(rawValue:)) ?? .dashboard)
     }
 
+    // `body` is deliberately assembled in stages. As one 20-modifier chain
+    // the type checker exceeded its budget ("unable to type-check this
+    // expression in reasonable time") and blamed whichever line it happened
+    // to stop on. Each stage below is solved independently and compiles fast.
     var body: some View {
+        withNotifications(withPresentation(withChrome(splitView)))
+    }
+
+    private var splitView: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 sidebarRow(.dashboard)
@@ -144,95 +152,145 @@ struct MainWindow: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .tint(Theme.palette(named: accentName)?.accent ?? .mint)
-        .navigationTitle("Marmot")
-        .background(
-            // Hidden triggers: ⌘K palette + ⌘1–9 section jumps.
-            Group {
-                Button("") {
-                    showPalette = true
-                    AppInventory.shared.loadIfNeeded() // for "uninstall <app>" intents
+    }
+
+    // MARK: Body stages
+
+    /// Window chrome: tint, title, keyboard shortcuts, overlays.
+    private func withChrome(_ content: some View) -> some View {
+        content
+            .tint(Theme.palette(named: accentName)?.accent ?? .mint)
+            .navigationTitle("Marmot")
+            .background(shortcutTriggers)
+            .onChange(of: selection) { _, newValue in
+                rememberSection(newValue)
+            }
+            .overlay { paletteOverlay }
+            .overlay { if dropTargeted { DropTargetOverlay() } }
+            .overlay(alignment: .bottom) { toastOverlay }
+            .task(id: toast?.id) { await autoDismissToast() }
+    }
+
+    /// Sheets and the first-run / post-update checks.
+    private func withPresentation(_ content: some View) -> some View {
+        content
+            .sheet(isPresented: onboardingBinding) {
+                OnboardingView { onboarded = true }
+            }
+            .sheet(isPresented: $showWhatsNew) {
+                WhatsNewView {
+                    WhatsNew.markSeen()
+                    showWhatsNew = false
                 }
-                .keyboardShortcut("k", modifiers: .command)
-                ForEach(Array(Self.quickSections.enumerated()), id: \.offset) { index, section in
-                    Button("") { selection = section }
-                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
-                }
             }
-            .hidden()
-        )
-        .onChange(of: selection) { _, newValue in
-            guard let newValue else { return }
-            UserDefaults.standard.set(newValue.rawValue, forKey: Prefs.lastSection)
-        }
-        .overlay {
-            if showPalette {
-                CommandPaletteView(items: paletteItems,
-                                   dynamicItems: dynamicPaletteItems) { showPalette = false }
+            .onAppear { showWhatsNewIfDue() }
+    }
+
+    /// Deep links, plan results, and app drops.
+    private func withNotifications(_ content: some View) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: .marmotOpenSettings)) { _ in
+                selection = .settings
             }
-        }
-        .overlay {
-            if dropTargeted { DropTargetOverlay() }
-        }
-        .overlay(alignment: .bottom) {
-            if let toast {
-                FreedToastView(
-                    toast: toast,
-                    onUndo: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            self.toast = toast.performUndo()
-                        }
-                    },
-                    onClose: {
-                        withAnimation(.easeOut(duration: 0.2)) { self.toast = nil }
-                    })
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            .onReceive(NotificationCenter.default.publisher(for: .marmotDroppedApp)) { note in
+                openDroppedApp(note)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .marmotPlanApplied)) { note in
+                showFreedToast(note)
+            }
+            .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: handleDrop)
+    }
+
+    // MARK: Stage pieces
+
+    /// Hidden triggers: ⌘K palette + ⌘1–9 section jumps.
+    private var shortcutTriggers: some View {
+        Group {
+            Button("") {
+                showPalette = true
+                AppInventory.shared.loadIfNeeded() // for "uninstall <app>" intents
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            ForEach(Array(Self.quickSections.enumerated()), id: \.offset) { index, section in
+                Button("") { selection = section }
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
             }
         }
-        .task(id: toast?.id) {
-            // Toasts dismiss themselves after a few seconds.
-            guard toast != nil else { return }
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
-            if !Task.isCancelled {
-                withAnimation(.easeOut(duration: 0.25)) { toast = nil }
-            }
+        .hidden()
+    }
+
+    @ViewBuilder
+    private var paletteOverlay: some View {
+        if showPalette {
+            CommandPaletteView(items: paletteItems,
+                               dynamicItems: dynamicPaletteItems) { showPalette = false }
         }
-        .sheet(isPresented: Binding(
-            get: { !onboarded },
-            set: { if !$0 { onboarded = true } }
-        )) {
-            OnboardingView { onboarded = true }
+    }
+
+    @ViewBuilder
+    private var toastOverlay: some View {
+        if let toast {
+            FreedToastView(
+                toast: toast,
+                onUndo: { undo(toast) },
+                onClose: { dismissToast() })
+                .transition(.move(edge: .bottom).combined(with: .opacity))
         }
-        .sheet(isPresented: $showWhatsNew) {
-            WhatsNewView {
-                WhatsNew.markSeen()
-                showWhatsNew = false
-            }
+    }
+
+    private var onboardingBinding: Binding<Bool> {
+        Binding(get: { !onboarded }, set: { if !$0 { onboarded = true } })
+    }
+
+    // MARK: Actions
+
+    private func rememberSection(_ section: SidebarSection?) {
+        guard let section else { return }
+        UserDefaults.standard.set(section.rawValue, forKey: Prefs.lastSection)
+    }
+
+    private func showWhatsNewIfDue() {
+        guard onboarded else { return }
+        guard WhatsNew.shouldShow() else { return }
+        showWhatsNew = true
+    }
+
+    private func undo(_ current: FreedToast) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            toast = current.performUndo()
         }
-        .onAppear {
-            if onboarded && WhatsNew.shouldShow() { showWhatsNew = true }
+    }
+
+    private func dismissToast() {
+        withAnimation(.easeOut(duration: 0.2)) { toast = nil }
+    }
+
+    /// Toasts dismiss themselves after a few seconds.
+    private func autoDismissToast() async {
+        guard toast != nil else { return }
+        try? await Task.sleep(nanoseconds: 8_000_000_000)
+        if !Task.isCancelled {
+            withAnimation(.easeOut(duration: 0.25)) { toast = nil }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .marmotOpenSettings)) { _ in
-            selection = .settings
+    }
+
+    private func openDroppedApp(_ note: Notification) {
+        guard let path = note.userInfo?["appPath"] as? String else { return }
+        selection = .uninstall
+        AppInventory.shared.loadIfNeeded()
+        DeepLink.post(.marmotUninstallIntent,
+                      userInfo: ["appPath": path, "reset": false], delay: 0.2)
+    }
+
+    private func showFreedToast(_ note: Notification) {
+        guard let result = note.userInfo?["result"] as? ExecutionResult else { return }
+        guard result.freedBytes > 0 else { return }
+        let restorables = result.results.filter {
+            $0.trashedTo != nil && $0.outcome == .done
         }
-        .onReceive(NotificationCenter.default.publisher(for: .marmotDroppedApp)) { note in
-            guard let path = note.userInfo?["appPath"] as? String else { return }
-            selection = .uninstall
-            AppInventory.shared.loadIfNeeded()
-            DeepLink.post(.marmotUninstallIntent,
-                          userInfo: ["appPath": path, "reset": false], delay: 0.2)
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            toast = FreedToast(freed: result.freedBytes, restorables: restorables)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .marmotPlanApplied)) { note in
-            guard let result = note.userInfo?["result"] as? ExecutionResult,
-                  result.freedBytes > 0 else { return }
-            let restorables = result.results.filter {
-                $0.trashedTo != nil && $0.outcome == .done
-            }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                toast = FreedToast(freed: result.freedBytes, restorables: restorables)
-            }
-        }
-        .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: handleDrop)
     }
 
     // MARK: Drop handling
