@@ -96,7 +96,7 @@ struct CommandPaletteView: View {
                 }
             }
             .frame(width: 480)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .marmotGlass(in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(Color.primary.opacity(0.1))
