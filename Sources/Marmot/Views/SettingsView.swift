@@ -88,7 +88,7 @@ struct SettingsView: View {
             Toggle("Suggest dry run before applying", isOn: $defaultDryRun)
             Group {
                 Toggle("Alert when new startup items appear", isOn: $sentinelEnabled)
-                    .onChange(of: sentinelEnabled) { on in
+                    .onChange(of: sentinelEnabled) { _, on in
                         if on {
                             StartupSentinel.shared.start()
                         } else {

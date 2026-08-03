@@ -161,7 +161,7 @@ struct MainWindow: View {
             }
             .hidden()
         )
-        .onChange(of: selection) { newValue in
+        .onChange(of: selection) { _, newValue in
             guard let newValue else { return }
             UserDefaults.standard.set(newValue.rawValue, forKey: Prefs.lastSection)
         }
@@ -235,12 +235,16 @@ struct MainWindow: View {
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
             var handled = false
             for provider in providers {
-                _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    guard let url, url.pathExtension == "app" else { return }
+                // Explicit types throughout: the inferred form pushed the
+                // type checker past its budget on newer compilers.
+                _ = provider.loadObject(ofClass: URL.self) { (url: URL?, _: Error?) in
+                    guard let url: URL = url else { return }
+                    guard url.pathExtension == "app" else { return }
+                    let path: String = url.path
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(
                             name: .marmotDroppedApp, object: nil,
-                            userInfo: ["appPath": url.path])
+                            userInfo: ["appPath": path])
                     }
                 }
                 handled = true

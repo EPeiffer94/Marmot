@@ -47,7 +47,7 @@ struct DashboardView: View {
             }
             refreshSuggestions()
         }
-        .onChange(of: cleanup.lastScan) { _ in refreshSuggestions() }
+        .onChange(of: cleanup.lastScan) { refreshSuggestions() }
         .sheet(isPresented: $showWrapped) {
             WrappedView(stats: Wrapped.stats(from: OperationLog.shared.readAll())) {
                 showWrapped = false
