@@ -57,7 +57,7 @@ struct FreedToastView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.regularMaterial, in: Capsule())
+        .marmotGlass(in: Capsule())
         .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.18)))
         .padding(.bottom, 16)
     }
@@ -83,7 +83,7 @@ struct DropTargetOverlay: View {
                     .foregroundStyle(.secondary)
             }
             .padding(24)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .marmotGlass(in: RoundedRectangle(cornerRadius: 14))
         }
         .padding(14)
         .allowsHitTesting(false)
