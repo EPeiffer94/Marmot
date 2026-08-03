@@ -34,7 +34,7 @@ struct CleanupView: View {
                 selectedCategoryIDs = model.nonEmptyCategoryIDs
             }
         }
-        .onChange(of: model.scanning) { isScanning in
+        .onChange(of: model.scanning) { _, isScanning in
             if !isScanning {
                 selectedCategoryIDs = model.nonEmptyCategoryIDs
             }
