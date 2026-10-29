@@ -33,7 +33,7 @@ brew install --cask EPeiffer94/marmot/marmot
 
 Either way, from then on Marmot updates itself — signed, verified, one click.
 
-> 🕰️ **On macOS 13–15?** [Marmot 3.2.0](https://github.com/EPeiffer94/Marmot/releases/tag/v3.2.0) is the final release for you, and it's a complete, safe, fully-featured app — every tool described below except the Liquid Glass coat of paint. Marmot won't offer you an update it can't run.
+> 🕰️ **On macOS 13–15?** [Marmot 3.2.0](https://github.com/EPeiffer94/Marmot/releases/tag/v3.2.0) is the final compatible release. Download `Marmot-3.2.0.zip` from that release, unzip it, and drag **Marmot.app** into **Applications**. The Homebrew command above requires macOS 26 (Tahoe) or later and does not install 3.2.0. Marmot won't offer you an update it can't run.
 
 **First launch only:** Marmot is free community software, not notarized through Apple's paid program, so macOS balks once. Double-click Marmot → click **OK** (not "Move to Trash"!) → **System Settings → Privacy & Security → "Open Anyway"** → confirm. That's the whole dance, forever. 💃
 
