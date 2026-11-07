@@ -280,9 +280,16 @@ enum CleanupScanner {
         for dir in [home + "/Downloads", home + "/Library/Caches/Homebrew/downloads"] {
             for path in children(of: dir)
             where exts.contains((path as NSString).pathExtension.lowercased()) {
+                // .iso images are often kept on purpose (virtual machines,
+                // OS installers), so they're listed but left unselected.
+                let isDiskImage = (path as NSString).pathExtension.lowercased() == "iso"
                 specs.append(Spec(path: path,
                                   group: dir.contains("Homebrew") ? "Homebrew" : "Downloads",
-                                  note: "Installer file. Safe to remove after the app is installed."))
+                                  risk: isDiskImage ? .medium : .low,
+                                  note: isDiskImage
+                                    ? "Disk image. Often kept on purpose (e.g. for a virtual machine), so it's not selected."
+                                    : "Installer file. Safe to remove after the app is installed.",
+                                  selected: !isDiskImage))
             }
         }
         return buildItems(specs, minSize: 1024 * 1024)
@@ -314,7 +321,7 @@ enum CleanupScanner {
 
     static func scanTrash() -> [ChangeItem] {
         let specs = children(of: home + "/.Trash").map {
-            Spec(path: $0, group: "Trash",
+            Spec(path: $0, group: "Trash", risk: .medium,
                  note: "Already in Trash. Removing is permanent.",
                  action: .deletePermanently)
         }
