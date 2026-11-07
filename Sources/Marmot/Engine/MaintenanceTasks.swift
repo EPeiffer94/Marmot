@@ -93,7 +93,9 @@ enum MaintenanceCatalog {
                 explanation: "Removes accumulated crash and diagnostic reports.",
                 effect: "Old crash reports are no longer available to inspect.",
                 commands: [
-                    .init(text: "/bin/rm -rf ~/Library/Logs/DiagnosticReports/*"),
+                    // (N): zsh's "no matches" is an error by default, so an
+                    // already-empty folder would otherwise report Failed.
+                    .init(text: "/bin/rm -rf ~/Library/Logs/DiagnosticReports/*(N)"),
                     .init(text: "/bin/rm -rf /Library/Logs/DiagnosticReports/*", needsAdmin: true)
                 ],
                 risk: .low),
