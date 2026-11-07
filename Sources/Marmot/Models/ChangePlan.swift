@@ -40,6 +40,10 @@ struct ChangeItem: Identifiable, Codable, Hashable, Sendable {
     /// Group label used by the preview UI (e.g. "Caches", "Launch Agents").
     var group: String = "General"
     var isSelected: Bool = true
+    /// Duplicates only: the kept copy. Right before removal the executor
+    /// checks it still exists and is byte-for-byte identical; otherwise this
+    /// item is left untouched.
+    var verifyIdenticalTo: String? = nil
 
     var displayName: String {
         if action == .runCommand || action == .runAdminCommand { return target }
@@ -90,6 +94,16 @@ struct ChangePlan: Identifiable, Sendable {
     }
 }
 
+/// Plan groups whose steps must succeed before anything else runs (quitting
+/// the app, archiving it to a Time Capsule). If one fails, PlanExecutor skips
+/// the rest of the plan rather than removing files the user expected to be
+/// backed up or closed first.
+enum PlanGroup {
+    static let beforeStarting = "Before starting"
+    static let timeCapsule = "Time Capsule"
+    static let prerequisites: Set<String> = [beforeStarting, timeCapsule]
+}
+
 // MARK: - Execution results
 
 enum ItemOutcome: String, Codable {
@@ -98,6 +112,7 @@ enum ItemOutcome: String, Codable {
     case wouldRun = "Would run (dry run)"
     case skippedUnsafe = "Skipped (safety rule)"
     case skippedWhitelisted = "Skipped (whitelisted)"
+    case skippedAfterFailure = "Skipped (earlier step failed)"
     case failed = "Failed"
 }
 

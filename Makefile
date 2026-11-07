@@ -28,11 +28,14 @@ bundle: build
 		if [ -d "$$lproj" ]; then cp -R "$$lproj" $(CONTENTS)/Resources/; fi \
 	done
 	@# Embed Sparkle.framework (from the SPM artifact) for self-updates.
+	@# Without it the app crashes at launch, so a missing framework is fatal.
 	@FMWK=$$(find .build/artifacts -type d -name "Sparkle.framework" 2>/dev/null | grep -m1 macos); \
-	if [ -n "$$FMWK" ]; then \
-		mkdir -p $(CONTENTS)/Frameworks; \
-		cp -R "$$FMWK" $(CONTENTS)/Frameworks/; \
-	fi
+	if [ -z "$$FMWK" ]; then \
+		echo "error: Sparkle.framework not found in .build/artifacts. Run 'swift package resolve' and try again."; \
+		exit 1; \
+	fi; \
+	mkdir -p $(CONTENTS)/Frameworks; \
+	cp -R "$$FMWK" $(CONTENTS)/Frameworks/
 	@install_name_tool -add_rpath @executable_path/../Frameworks $(CONTENTS)/MacOS/$(APP_NAME) 2>/dev/null || true
 	codesign --force --deep --sign - $(BUNDLE)
 	@echo "Built $(BUNDLE) — move it to /Applications or run: open $(BUNDLE)"

@@ -80,6 +80,24 @@ enum StartupEngine {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    /// Admin command that stops a system launch agent/daemon and moves its
+    /// plist into the user's Trash (recoverable). The Trash path is spelled
+    /// out rather than "$HOME", which isn't reliable under admin privileges,
+    /// and a name already in the Trash gets a unique suffix instead of being
+    /// overwritten.
+    static func systemItemRemovalCommand(for path: String) -> String {
+        let name = (path as NSString).lastPathComponent
+        var destination = SafetyRules.home + "/.Trash/" + name
+        if FileManager.default.fileExists(atPath: destination) {
+            let base = (name as NSString).deletingPathExtension
+            let ext = (name as NSString).pathExtension
+            let stamp = Int(Date().timeIntervalSince1970)
+            destination = SafetyRules.home + "/.Trash/\(base) \(stamp)" + (ext.isEmpty ? "" : "." + ext)
+        }
+        return "launchctl bootout system \(Shell.quoted(path)) 2>/dev/null; "
+            + "mv \(Shell.quoted(path)) \(Shell.quoted(destination))"
+    }
+
     static func removalPlan(for item: StartupItem) -> ChangePlan {
         var items: [ChangeItem] = []
         switch item.kind {
@@ -111,7 +129,7 @@ enum StartupEngine {
         case .systemAgent, .systemDaemon:
             guard let path = item.plistPath else { break }
             items.append(ChangeItem(
-                target: "launchctl bootout system \(Shell.quoted(path)) 2>/dev/null; mv \(Shell.quoted(path)) \"$HOME/.Trash/\"",
+                target: systemItemRemovalCommand(for: path),
                 action: .runAdminCommand,
                 risk: .medium,
                 note: "Stops the item and moves its configuration to your Trash (recoverable). The app it belongs to is not deleted.",

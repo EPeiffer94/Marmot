@@ -86,6 +86,46 @@ final class SafetyRulesTests: XCTestCase {
         XCTAssertTrue(SafetyRules.isSafeToRemove(artifact, allowPurgeRoots: true))
     }
 
+    /// Regression: GitHub Desktop clones into ~/Documents/GitHub, a default
+    /// purge root. Its build artifacts were listed and preselected, then all
+    /// refused by the user-content guard.
+    func testProjectFolderInsideDocumentsIsPurgeable() {
+        let artifact = home + "/Documents/GitHub/my-app/node_modules"
+        XCTAssertFalse(SafetyRules.isSafeToRemove(artifact))
+        XCTAssertTrue(SafetyRules.isSafeToRemove(artifact, allowPurgeRoots: true))
+
+        // The rest of Documents stays protected, and so does the root itself.
+        XCTAssertFalse(SafetyRules.isSafeToRemove(home + "/Documents/taxes.pdf", allowPurgeRoots: true))
+        XCTAssertFalse(SafetyRules.isSafeToRemove(home + "/Documents/GitHub", allowPurgeRoots: true))
+    }
+
+    /// Regression: Duplicates scans of user-added folders (an external drive,
+    /// ~/Projects) found duplicates that the gate then refused to remove.
+    func testUserPickedFoldersUnlockOnlyThatFolder() {
+        let drive = "/Volumes/Backup/Photos"
+        XCTAssertFalse(SafetyRules.isSafeToRemove(drive + "/a.jpg", allowUserFiles: true))
+        XCTAssertTrue(SafetyRules.isSafeToRemove(drive + "/a.jpg", allowUserFiles: true, extraRoots: [drive]))
+        XCTAssertFalse(SafetyRules.isSafeToRemove(drive, allowUserFiles: true, extraRoots: [drive]))
+        XCTAssertFalse(SafetyRules.isSafeToRemove("/Volumes/Backup/other.jpg", extraRoots: [drive]))
+
+        // Too-broad or system-owned picks never become removal roots.
+        XCTAssertFalse(SafetyRules.isAcceptableExtraRoot("/"))
+        XCTAssertFalse(SafetyRules.isAcceptableExtraRoot("/Volumes"))
+        XCTAssertFalse(SafetyRules.isAcceptableExtraRoot(home))
+        XCTAssertFalse(SafetyRules.isAcceptableExtraRoot(home + "/Library"))
+        XCTAssertFalse(SafetyRules.isAcceptableExtraRoot(home + "/Library/Fonts"))
+        XCTAssertFalse(SafetyRules.isAcceptableExtraRoot("/Applications"))
+        XCTAssertFalse(SafetyRules.isAcceptableExtraRoot("/System/Library"))
+        XCTAssertTrue(SafetyRules.isAcceptableExtraRoot(home + "/Projects"))
+        XCTAssertFalse(SafetyRules.isSafeToRemove(home + "/Library/Fonts/x.ttf", extraRoots: [home + "/Library"]))
+        XCTAssertFalse(SafetyRules.isSafeToRemove("/Volumes/X/file", extraRoots: ["/"]))
+
+        // Protected areas inside a picked folder stay protected.
+        XCTAssertFalse(SafetyRules.isSafeToRemove(
+            home + "/Projects/Photos Library.photoslibrary/originals/img.jpg",
+            extraRoots: [home + "/Projects"]))
+    }
+
     func testHighRiskItemsAreNeverPreselected() {
         let item = ChangeItem(target: "/tmp/x", action: .moveToTrash, risk: .high)
         let plan = ChangePlan(title: "t", source: "s", items: [item])

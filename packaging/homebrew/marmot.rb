@@ -18,7 +18,10 @@ cask "marmot" do
 
   zap trash: [
     "~/Library/Application Support/Marmot",
+    "~/Library/Caches/dev.marmot.app",
+    "~/Library/HTTPStorages/dev.marmot.app",
     "~/Library/Preferences/dev.marmot.app.plist",
+    "~/Library/Saved Application State/dev.marmot.app.savedState",
   ]
 
   caveats <<~CAVEATS

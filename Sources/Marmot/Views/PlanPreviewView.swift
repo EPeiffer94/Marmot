@@ -15,6 +15,9 @@ struct PlanPreviewView: View {
     @State var plan: ChangePlan
     var allowPurgeRoots = false
     var allowUserFiles = false
+    /// Folders the user explicitly picked for this plan (Duplicates scan
+    /// folders). SafetyRules still filters out anything too broad.
+    var extraRoots: [String] = []
     var onDismiss: (ExecutionResult?) -> Void
 
     @State private var phase: Phase = .reviewing
@@ -333,10 +336,12 @@ struct PlanPreviewView: View {
         let planCopy = plan
         let purge = allowPurgeRoots
         let userFiles = allowUserFiles
+        let extras = extraRoots
         Task {
             let result = await PlanExecutor.execute(planCopy, dryRun: dryRun,
                                                     allowPurgeRoots: purge,
-                                                    allowUserFiles: userFiles) { progress, name in
+                                                    allowUserFiles: userFiles,
+                                                    extraRoots: extras) { progress, name in
                 Task { @MainActor in
                     phase = .running(progress: progress, current: name)
                 }

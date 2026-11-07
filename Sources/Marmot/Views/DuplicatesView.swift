@@ -26,7 +26,7 @@ struct DuplicatesView: View {
         }
         .toolbar { toolbarContent }
         .sheet(item: $activePlan) { plan in
-            PlanPreviewView(plan: plan, allowUserFiles: true) { result in
+            PlanPreviewView(plan: plan, allowUserFiles: true, extraRoots: model.roots) { result in
                 activePlan = nil
                 if let r = result, !r.dryRun { model.startScan() }
             }
@@ -222,13 +222,20 @@ struct DuplicatesView: View {
             let keeperID = model.keeperID(for: group)
             guard let keeper = group.files.first(where: { $0.id == keeperID }) else { continue }
             for file in group.files where file.id != keeper.id {
+                // Flag copies the safety gate will refuse (e.g. a folder in
+                // ~/Library) up front, unselected, instead of a silent skip.
+                let safe = SafetyRules.isSafeToRemove(file.path, allowUserFiles: true,
+                                                      extraRoots: model.roots)
                 items.append(ChangeItem(
                     target: file.path,
                     action: .moveToTrash,
                     sizeBytes: file.sizeBytes,
-                    risk: .medium,
-                    note: "Identical content to the kept copy at \(keeper.directory).",
-                    group: file.directory))
+                    risk: safe ? .medium : .high,
+                    note: safe
+                        ? "Identical content to the kept copy at \(keeper.directory)."
+                        : "Outside Marmot's safe-removal zones, so it will be skipped. Remove it in Finder if you are sure.",
+                    group: file.directory,
+                    verifyIdenticalTo: keeper.path))
             }
         }
         guard !items.isEmpty else { return }
