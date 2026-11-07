@@ -165,7 +165,7 @@ struct UninstallView: View {
                     target: "/usr/bin/zip -qry \(Shell.quoted(destination.path)) \(quoted)",
                     action: .runCommand,
                     note: "Archives the app and all its data to \(destination.lastPathComponent) before anything is removed.",
-                    group: "Time Capsule"))
+                    group: PlanGroup.timeCapsule))
             }
             if !prefix.isEmpty {
                 plan = ChangePlan(title: plan.title, source: plan.source, items: prefix + plan.items)

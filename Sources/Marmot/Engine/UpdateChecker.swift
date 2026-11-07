@@ -100,11 +100,7 @@ enum UpdateChecker {
 
     static func latestSparkleVersion(url: URL) async -> String? {
         guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
-        let parser = SparkleAppcastParser()
-        let xml = XMLParser(data: data)
-        xml.delegate = parser
-        xml.parse()
-        return parser.bestVersion
+        return SparkleAppcastParser.latestVersion(in: data)
     }
 
     static func masVersion(bundleID: String) async -> String? {
@@ -156,21 +152,89 @@ enum UpdateChecker {
     }
 }
 
+/// Reads a Sparkle appcast and finds the newest version this Mac can install.
+///
+/// Handles both appcast styles: versions as `<enclosure>` attributes (older
+/// feeds) and as `<sparkle:shortVersionString>` / `<sparkle:version>` child
+/// elements (what `generate_appcast` writes today, and what Marmot's own feed
+/// uses). Items on a named channel (betas) and items whose
+/// `minimumSystemVersion` this Mac doesn't meet are ignored.
 final class SparkleAppcastParser: NSObject, XMLParserDelegate {
     var bestVersion: String?
+
+    private var inItem = false
+    private var text = ""
+    private var shortVersion: String?
+    private var buildVersion: String?
+    private var minimumSystem: String?
+    private var channel: String?
+
+    static func latestVersion(in data: Data) -> String? {
+        let parser = SparkleAppcastParser()
+        let xml = XMLParser(data: data)
+        xml.delegate = parser
+        xml.parse()
+        return parser.bestVersion
+    }
 
     func parser(_ parser: XMLParser, didStartElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?,
                 attributes attributeDict: [String: String] = [:]) {
-        guard elementName == "enclosure" else { return }
-        let version = attributeDict["sparkle:shortVersionString"]
-            ?? attributeDict["sparkle:version"]
-        if let v = version {
-            if let current = bestVersion {
-                if UpdateChecker.isNewer(v, than: current) { bestVersion = v }
-            } else {
-                bestVersion = v
-            }
+        text = ""
+        switch elementName {
+        case "item":
+            inItem = true
+            shortVersion = nil
+            buildVersion = nil
+            minimumSystem = nil
+            channel = nil
+        case "enclosure" where inItem:
+            shortVersion = shortVersion ?? attributeDict["sparkle:shortVersionString"]
+            buildVersion = buildVersion ?? attributeDict["sparkle:version"]
+        default:
+            break
         }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        text += string
+    }
+
+    func parser(_ parser: XMLParser, foundCDATA cdataBlock: Data) {
+        text += String(data: cdataBlock, encoding: .utf8) ?? ""
+    }
+
+    func parser(_ parser: XMLParser, didEndElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?) {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = ""
+        guard inItem else { return }
+        switch elementName {
+        case "sparkle:shortVersionString" where !value.isEmpty:
+            shortVersion = value
+        case "sparkle:version" where !value.isEmpty:
+            buildVersion = value
+        case "sparkle:minimumSystemVersion" where !value.isEmpty:
+            minimumSystem = value
+        case "sparkle:channel" where !value.isEmpty:
+            channel = value
+        case "item":
+            inItem = false
+            considerCurrentItem()
+        default:
+            break
+        }
+    }
+
+    private func considerCurrentItem() {
+        guard channel == nil else { return }
+        if let minimum = minimumSystem, !UpdateChecker.currentOSSatisfies(minimum) { return }
+        // Only marketing versions compare with CFBundleShortVersionString. A
+        // bare build number ("132") would look newer than "4.0.0", so
+        // sparkle:version is used only when it is itself dotted.
+        let dottedBuild = buildVersion.flatMap { $0.contains(".") ? $0 : nil }
+        guard let version = shortVersion ?? dottedBuild else { return }
+        if let current = bestVersion, !UpdateChecker.isNewer(version, than: current) { return }
+        bestVersion = version
     }
 }

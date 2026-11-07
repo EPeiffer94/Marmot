@@ -118,10 +118,12 @@ enum UninstallEngine {
     /// Quit step used before uninstall/reset when the app is running.
     static func quitItem(for app: InstalledApp) -> ChangeItem {
         ChangeItem(
-            target: "osascript -e " + Shell.quoted("tell application \(Shell.appleScriptString(app.name)) to quit"),
+            // By bundle ID, not name: a display name that doesn't match the
+            // .app file makes AppleScript pop a "Where is …?" picker.
+            target: "osascript -e " + Shell.quoted("tell application id \(Shell.appleScriptString(app.bundleID)) to quit"),
             action: .runCommand,
             note: "Quits \(app.name) first so its files aren't in use.",
-            group: "Before starting")
+            group: PlanGroup.beforeStarting)
     }
 
     /// Remnants for an app that may or may not still be installed.
@@ -180,11 +182,12 @@ enum UninstallEngine {
                 guard name.hasPrefix(idLower) || name.contains(idLower) else { continue }
                 if action == .runAdminCommand {
                     items.append(ChangeItem(
-                        target: "launchctl bootout system \(Shell.quoted(path)) 2>/dev/null; rm -f \(Shell.quoted(path))",
+                        target: StartupEngine.systemItemRemovalCommand(for: path),
                         action: .runAdminCommand,
                         sizeBytes: FileSizer.size(of: path),
                         risk: .medium,
-                        note: "Unloads and removes the system launch item \((path as NSString).lastPathComponent).",
+                        note: "Unloads the system launch item \((path as NSString).lastPathComponent) "
+                            + "and moves it to your Trash (recoverable).",
                         group: group))
                 } else {
                     items.append(ChangeItem(

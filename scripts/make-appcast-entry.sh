@@ -2,20 +2,34 @@
 # Signs a release zip with the Sparkle EdDSA key (from your Keychain) and
 # inserts the corresponding <item> into appcast.xml.
 #
-# Usage: sh scripts/make-appcast-entry.sh Marmot-2.1.0.zip 2.1.0
+# Usage: sh scripts/make-appcast-entry.sh                     (uses the Makefile VERSION)
+#        sh scripts/make-appcast-entry.sh Marmot-2.1.0.zip 2.1.0
+#
+# The version and build number are read from the app INSIDE the zip, so the
+# appcast always matches what users download — even if you re-run this after
+# committing. (A mismatched build number makes Sparkle offer the same update
+# forever.)
 set -e
 cd "$(dirname "$0")/.."
 
-ZIP="$1"
-VER="$2"
-[ -n "$ZIP" ] && [ -n "$VER" ] || { echo "Usage: sh scripts/make-appcast-entry.sh <zipfile> <version>"; exit 1; }
+MAKE_VER=$(grep '^VERSION' Makefile | head -1 | sed 's/.*= *//')
+ZIP="${1:-Marmot-$MAKE_VER.zip}"
 [ -f "$ZIP" ] || { echo "Zip not found: $ZIP — run 'make release' first."; exit 1; }
+
+PLIST=$(mktemp)
+unzip -p "$ZIP" "Marmot.app/Contents/Info.plist" > "$PLIST" \
+    || { rm -f "$PLIST"; echo "Could not read Marmot.app/Contents/Info.plist from $ZIP."; exit 1; }
+BUILD_NUM=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST")
+ZIP_VER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
+rm -f "$PLIST"
+
+VER="${2:-$ZIP_VER}"
+[ "$VER" = "$ZIP_VER" ] || { echo "Version mismatch: you passed $VER but $ZIP contains $ZIP_VER."; exit 1; }
 
 SIGN=$(find .build/artifacts -name sign_update -type f 2>/dev/null | head -1)
 [ -n "$SIGN" ] || { echo "sign_update tool not found — run 'swift build -c release' first."; exit 1; }
 
 SIG_ATTRS=$("$SIGN" "$ZIP")
-BUILD_NUM=$(git rev-list --count HEAD)
 
 export ZIP VER SIG_ATTRS BUILD_NUM
 python3 << 'EOF'
