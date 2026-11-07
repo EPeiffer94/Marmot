@@ -66,6 +66,36 @@ Right before removal, every path is checked again against protected areas (Docum
 
 Press ⌘K for the command palette (try "uninstall slack" or "files over 2gb") and ⌘1–9 to switch tools. There are five color themes in Settings.
 
+## How it compares
+
+| | 🐿️ **Marmot** | CleanMyMac | AppCleaner | DaisyDisk |
+|---|:---:|:---:|:---:|:---:|
+| 💵 **Price** | Free | Paid, from $3.33/mo | Free | $9.99 one-time |
+| 🔓 **Open source** | ✅ MIT | ❌ | ❌ | ❌ |
+| 💻 **Runs on** | macOS 26+ ¹ | macOS 11+ | macOS 15+ ² | macOS 10.13+ |
+| 🧹 **Junk & cache cleanup** | ✅ | ✅ | ❌ | ❌ |
+| 🗑️ **Uninstaller that finds leftovers** | ✅ | ✅ | ✅ | ❌ |
+| 🪞 **Duplicate finder** | ✅ | ✅ | ❌ | ❌ |
+| 🔍 **Large file finder** | ✅ | ✅ | ❌ | ✅ |
+| 🗺️ **Visual disk map** | ✅ | ✅ ³ | ❌ | ✅ |
+| ⚡ **Startup items manager** | ✅ | ✅ | ❌ | ❌ |
+| ⬇️ **App update checker** | ✅ | ✅ | ❌ | ❌ |
+| 📊 **Menu bar system monitor** | ✅ | ✅ | ❌ | ❌ |
+| 🛡️ **Malware removal** | ❌ | ✅ | ❌ | ❌ |
+| ☁️ **Cloud storage scanning** | ❌ | ✅ | ❌ | ✅ |
+| ♻️ **Can undo a removal** | ✅ ⁴ | ⚠️ Not always ⁵ | ✅ ⁶ | ❌ Deletes permanently |
+
+¹ Marmot 3.2.0 still runs on macOS 13–15.\
+² AppCleaner 3.7. Older versions support macOS 10.10 through 15.\
+³ Space Lens isn't included in the CleanMyMac Basic plan.\
+⁴ Removals go to the Trash and can be restored from History. Emptying the Trash is the exception.\
+⁵ CleanMyMac's support docs say Large & Old Files removes files permanently, bypassing the Trash.\
+⁶ AppCleaner can undo the last removal.
+
+Not in the table: Marmot's dry runs, scheduled cleaning, Disk Time Travel and alerts for new startup items. We haven't confirmed whether the other apps have these, so we left them out.
+
+Checked on November 7, 2026 against each developer's website and support docs: [CleanMyMac](https://macpaw.com/cleanmymac) ([Large & Old Files](https://macpaw.com/support/cleanmymac/knowledgebase/large-and-old), [Space Lens](https://macpaw.com/support/cleanmymac/knowledgebase/space-lens), [Menu](https://macpaw.com/support/cleanmymac/knowledgebase/cleanmymac-menu)), [AppCleaner](https://freemacsoft.net/appcleaner/) ([release notes](https://freemacsoft.net/appcleaner/releasenotes.html)), [DaisyDisk](https://daisydiskapp.com/) ([deleting files](https://daisydiskapp.com/guide/3/en/DeletingFiles)). Apps change, so if something here is out of date, please open an issue.
+
 ## Full Disk Access
 
 Marmot works without it, but some places it scans (Mail, other apps' containers) are hidden unless you grant it. Go to **System Settings → Privacy & Security → Full Disk Access**, turn on Marmot, then relaunch it.
