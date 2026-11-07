@@ -59,6 +59,7 @@ extension ItemOutcome {
         case .done: return "checkmark.circle.fill"
         case .wouldRemove, .wouldRun: return "eye"
         case .skippedUnsafe, .skippedWhitelisted: return "shield.fill"
+        case .skippedAfterFailure: return "forward.end.fill"
         case .failed: return "xmark.circle.fill"
         }
     }
@@ -67,7 +68,7 @@ extension ItemOutcome {
         switch self {
         case .done: return .green
         case .wouldRemove, .wouldRun: return .blue
-        case .skippedUnsafe, .skippedWhitelisted: return .orange
+        case .skippedUnsafe, .skippedWhitelisted, .skippedAfterFailure: return .orange
         case .failed: return .red
         }
     }

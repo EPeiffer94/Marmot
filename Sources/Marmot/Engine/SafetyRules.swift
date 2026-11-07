@@ -93,7 +93,8 @@ enum SafetyRules {
     /// hand-picks individual files inside their own content folders.
     static func isSafeToRemove(_ path: String,
                                allowPurgeRoots: Bool = false,
-                               allowUserFiles: Bool = false) -> Bool {
+                               allowUserFiles: Bool = false,
+                               extraRoots: [String] = []) -> Bool {
         let p = normalize(path)
 
         // Basic sanity. NUL bytes are rejected outright: a path truncated at
@@ -118,8 +119,16 @@ enum SafetyRules {
             let n = normalize(prefix)
             if p == n || p.hasPrefix(n + "/") { return false }
         }
-        // User-content areas are protected unless explicitly unlocked.
-        if !allowUserFiles {
+        // Folders the user explicitly picked for this plan (e.g. Duplicates
+        // scan folders), minus anything too broad or system-owned.
+        let extras = extraRoots.filter(isAcceptableExtraRoot)
+
+        // User-content areas are protected unless explicitly unlocked — by
+        // user-files mode, by a project folder the user registered inside
+        // them (e.g. ~/Documents/GitHub), or by a folder picked for this plan.
+        if !allowUserFiles
+            && !(allowPurgeRoots && isInsideUserDataPurgeRoot(p))
+            && !isInside(p, anyOf: extras) {
             for prefix in userDataPrefixes {
                 let n = normalize(prefix)
                 if p == n || p.hasPrefix(n + "/") { return false }
@@ -130,12 +139,49 @@ enum SafetyRules {
         var roots = allowedRoots
         if allowPurgeRoots { roots += purgeRoots }
         if allowUserFiles { roots += userDataPrefixes }
+        roots += extras
         let inside = roots.contains { root in
             let r = normalize(root)
             return p.hasPrefix(r + "/") && p.count > r.count + 1
         }
         guard inside else { return false }
 
+        return true
+    }
+
+    /// True when `p` sits strictly inside one of `roots`.
+    static func isInside(_ p: String, anyOf roots: [String]) -> Bool {
+        roots.contains { root in
+            let r = normalize(root)
+            return p.hasPrefix(r + "/") && p.count > r.count + 1
+        }
+    }
+
+    /// Project folders the user keeps inside a protected content area, such
+    /// as ~/Documents/GitHub (GitHub Desktop's default). Only a strict
+    /// subfolder counts: a purge root of ~/Documents itself never unlocks the
+    /// whole folder.
+    static func isInsideUserDataPurgeRoot(_ p: String) -> Bool {
+        let unlocked = purgeRoots.map(normalize).filter { root in
+            !root.contains("..") && userDataPrefixes.contains { root.hasPrefix(normalize($0) + "/") }
+        }
+        return isInside(p, anyOf: unlocked)
+    }
+
+    /// A folder the user explicitly picked (e.g. a Duplicates scan folder)
+    /// may act as a removal root for that plan — but never "/", the home
+    /// folder, anything in ~/Library, a top-level system folder, or a
+    /// system-protected area.
+    static func isAcceptableExtraRoot(_ root: String) -> Bool {
+        let r = normalize(root)
+        guard r.hasPrefix("/"), !r.contains(".."), !r.contains("\0"),
+              r.split(separator: "/").count >= 2,
+              r != home else { return false }
+        let tooBroad = [home + "/Library", "/Library", "/Applications", "/private", "/Users/Shared"]
+        for prefix in tooBroad + systemProtectedPrefixes {
+            let n = normalize(prefix)
+            if r == n || r.hasPrefix(n + "/") { return false }
+        }
         return true
     }
 

@@ -10,17 +10,32 @@ final class PlanExecutor {
                         dryRun: Bool,
                         allowPurgeRoots: Bool = false,
                         allowUserFiles: Bool = false,
+                        extraRoots: [String] = [],
                         progress: ((Double, String) -> Void)? = nil) async -> ExecutionResult {
         let items = plan.selectedItems
         var results: [ItemResult] = []
         results.reserveCapacity(items.count)
 
+        // Set when a prerequisite step (quit the app, Time Capsule archive)
+        // fails: everything after it is skipped, so nothing is removed that
+        // the user expected to be closed or backed up first.
+        var failedPrerequisite: String?
+
         for (index, item) in items.enumerated() {
             progress?(Double(index) / Double(max(items.count, 1)), item.displayName)
+            if let group = failedPrerequisite {
+                results.append(ItemResult(item: item, outcome: .skippedAfterFailure,
+                                          detail: "Not run because a \"\(group)\" step failed."))
+                continue
+            }
             let result = await executeItem(item, dryRun: dryRun,
                                            allowPurgeRoots: allowPurgeRoots,
-                                           allowUserFiles: allowUserFiles)
+                                           allowUserFiles: allowUserFiles,
+                                           extraRoots: extraRoots)
             results.append(result)
+            if !dryRun, result.outcome == .failed, PlanGroup.prerequisites.contains(item.group) {
+                failedPrerequisite = item.group
+            }
         }
         progress?(1.0, "Finished")
 
@@ -32,12 +47,14 @@ final class PlanExecutor {
     private static func executeItem(_ item: ChangeItem,
                                     dryRun: Bool,
                                     allowPurgeRoots: Bool,
-                                    allowUserFiles: Bool) async -> ItemResult {
+                                    allowUserFiles: Bool,
+                                    extraRoots: [String]) async -> ItemResult {
         switch item.action {
         case .moveToTrash, .deletePermanently:
             return removeFile(item, dryRun: dryRun,
                               allowPurgeRoots: allowPurgeRoots,
-                              allowUserFiles: allowUserFiles)
+                              allowUserFiles: allowUserFiles,
+                              extraRoots: extraRoots)
         case .runCommand, .runAdminCommand:
             return runCommand(item, dryRun: dryRun)
         }
@@ -46,19 +63,34 @@ final class PlanExecutor {
     private static func removeFile(_ item: ChangeItem,
                                    dryRun: Bool,
                                    allowPurgeRoots: Bool,
-                                   allowUserFiles: Bool) -> ItemResult {
+                                   allowUserFiles: Bool,
+                                   extraRoots: [String]) -> ItemResult {
         let path = item.target
 
         if SafetyRules.isWhitelisted(path) {
             return ItemResult(item: item, outcome: .skippedWhitelisted)
         }
         guard SafetyRules.isSafeToRemove(path, allowPurgeRoots: allowPurgeRoots,
-                                         allowUserFiles: allowUserFiles) else {
+                                         allowUserFiles: allowUserFiles,
+                                         extraRoots: extraRoots) else {
             return ItemResult(item: item, outcome: .skippedUnsafe,
                               detail: "Path failed safety validation and was not touched.")
         }
         guard FileManager.default.fileExists(atPath: path) else {
             return ItemResult(item: item, outcome: .failed, detail: "No longer exists.")
+        }
+        // Duplicates: the scan samples large files, so confirm the full
+        // contents match the kept copy (and that it is still there) before
+        // removing anything.
+        if let keeper = item.verifyIdenticalTo {
+            guard FileManager.default.fileExists(atPath: keeper) else {
+                return ItemResult(item: item, outcome: .skippedUnsafe,
+                                  detail: "The kept copy is gone, so this copy was left in place.")
+            }
+            guard DuplicateEngine.filesAreIdentical(path, keeper) else {
+                return ItemResult(item: item, outcome: .skippedUnsafe,
+                                  detail: "Not identical to the kept copy after a full check, so it was left in place.")
+            }
         }
         if dryRun {
             return ItemResult(item: item, outcome: .wouldRemove)

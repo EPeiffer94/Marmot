@@ -163,6 +163,33 @@ final class DuplicateEngine {
         return score
     }
 
+    /// Full byte-for-byte comparison, run on each copy right before it is
+    /// removed. The scan's sampled hash is fast; this makes removal exact.
+    static func filesAreIdentical(_ first: String, _ second: String) -> Bool {
+        guard first != second else { return false }
+        let fm = FileManager.default
+        guard let sizeA = (try? fm.attributesOfItem(atPath: first))?[.size] as? Int64,
+              let sizeB = (try? fm.attributesOfItem(atPath: second))?[.size] as? Int64,
+              sizeA == sizeB,
+              let handleA = FileHandle(forReadingAtPath: first),
+              let handleB = FileHandle(forReadingAtPath: second) else { return false }
+        defer {
+            try? handleA.close()
+            try? handleB.close()
+        }
+        let chunkSize = 1024 * 1024
+        do {
+            while true {
+                let dataA = try handleA.read(upToCount: chunkSize) ?? Data()
+                let dataB = try handleB.read(upToCount: chunkSize) ?? Data()
+                if dataA != dataB { return false }
+                if dataA.isEmpty { return true }
+            }
+        } catch {
+            return false
+        }
+    }
+
     /// SHA-256 over the file content. Files ≤ 4 MB are hashed in full;
     /// larger files are hashed via 1 MB chunks at head, middle, and tail
     /// (identical size + identical chunks is a reliable duplicate signal).
