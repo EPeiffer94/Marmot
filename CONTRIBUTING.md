@@ -62,7 +62,20 @@ Tests/MarmotTests/          Safety-rule truth table + version comparison tests
 
 ## Releases (maintainers)
 
-See the "Self-updates" section of the README — `make release`, sign with `scripts/make-appcast-entry.sh`, push the appcast, attach the zip to a GitHub release.
+Run these in order. The cask URL points at the release asset, so update the tap only after the GitHub release is published with the zip attached.
+
+```sh
+make release VERSION=x.y.z
+sh scripts/make-appcast-entry.sh Marmot-x.y.z.zip x.y.z   # sign + add appcast entry
+sh scripts/make-cask.sh                                   # refresh the Homebrew cask
+git add -A && git commit -m "Release x.y.z: appcast + cask" && git push
+git tag vx.y.z && git push origin vx.y.z
+# Create the GitHub release for vx.y.z and attach Marmot-x.y.z.zip (exact filename). Then:
+cp packaging/homebrew/marmot.rb ../homebrew-marmot/Casks/marmot.rb
+cd ../homebrew-marmot && git commit -am "marmot x.y.z" && git push
+```
+
+The Sparkle signing key lives in the maintainer's Keychain; keep an exported backup somewhere safe. Existing users update through Sparkle either way. The cask only matters for new `brew` installs.
 
 ## Questions?
 
