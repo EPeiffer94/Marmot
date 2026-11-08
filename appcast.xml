@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <title>Marmot Updates</title>
-    <link>https://raw.githubusercontent.com/EPeiffer94/Marmot/main/appcast.xml</link>
+    <link>https://raw.githubusercontent.com/Kasakir-AI/Marmot/main/appcast.xml</link>
     <description>Release feed for Marmot — new entries are added by scripts/make-appcast-entry.sh</description>
     <language>en</language>
     <!-- MARMOT_APPCAST_ITEMS -->
@@ -12,7 +12,7 @@
       <sparkle:version>132</sparkle:version>
       <sparkle:shortVersionString>4.0.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v4.0.0/Marmot-4.0.0.zip" sparkle:edSignature="KTUJinq9+g1xjzuagg8JVDB/vMm9LsTEowdCuLBlRcxtYrpFBZ0i3nynfPLeRDF1MpL7OWFta7Wlw+kwyUQ3Aw==" length="2439417" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v4.0.0/Marmot-4.0.0.zip" sparkle:edSignature="KTUJinq9+g1xjzuagg8JVDB/vMm9LsTEowdCuLBlRcxtYrpFBZ0i3nynfPLeRDF1MpL7OWFta7Wlw+kwyUQ3Aw==" length="2439417" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 3.2.0</title>
@@ -20,7 +20,7 @@
       <sparkle:version>125</sparkle:version>
       <sparkle:shortVersionString>3.2.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v3.2.0/Marmot-3.2.0.zip" sparkle:edSignature="QeO38NKmZy1Vjbq8Zobc0f45FaSXMkoe3kLi2cBpvDU1YiViwNG5mn6mndinwEtsFzH05O+0Rw2w8dEkteYVBQ==" length="2480658" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v3.2.0/Marmot-3.2.0.zip" sparkle:edSignature="QeO38NKmZy1Vjbq8Zobc0f45FaSXMkoe3kLi2cBpvDU1YiViwNG5mn6mndinwEtsFzH05O+0Rw2w8dEkteYVBQ==" length="2480658" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 3.1.0</title>
@@ -28,7 +28,7 @@
       <sparkle:version>120</sparkle:version>
       <sparkle:shortVersionString>3.1.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v3.1.0/Marmot-3.1.0.zip" sparkle:edSignature="UOxa/z6Evly99nHU7AmSTlDEGFPs+0GVAvZV7wwaTtb4QAP/CKr4bsQH7dZaeGRSK3umbjOODDr7N+Y09MhpAQ==" length="2439535" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v3.1.0/Marmot-3.1.0.zip" sparkle:edSignature="UOxa/z6Evly99nHU7AmSTlDEGFPs+0GVAvZV7wwaTtb4QAP/CKr4bsQH7dZaeGRSK3umbjOODDr7N+Y09MhpAQ==" length="2439535" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 3.0.4</title>
@@ -36,7 +36,7 @@
       <sparkle:version>117</sparkle:version>
       <sparkle:shortVersionString>3.0.4</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v3.0.4/Marmot-3.0.4.zip" sparkle:edSignature="buIDpKdsabaFQxpPusq/zMBxUCuh/TCHmSTYqaJYrYtD/sg+eaEpe+vepQqJMuQYW5vilgSkgVTQbBpBJzSbCQ==" length="2429007" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v3.0.4/Marmot-3.0.4.zip" sparkle:edSignature="buIDpKdsabaFQxpPusq/zMBxUCuh/TCHmSTYqaJYrYtD/sg+eaEpe+vepQqJMuQYW5vilgSkgVTQbBpBJzSbCQ==" length="2429007" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 3.0.3</title>
@@ -44,7 +44,7 @@
       <sparkle:version>111</sparkle:version>
       <sparkle:shortVersionString>3.0.3</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v3.0.3/Marmot-3.0.3.zip" sparkle:edSignature="IknjHqROkd8exQ/GU+OyxcugLnIk819MtuH0Rl/9ksrtzobpUV0whVAreDbIR/UJQSEPZ8hXGQn8+RKcuzPQBg==" length="2432930" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v3.0.3/Marmot-3.0.3.zip" sparkle:edSignature="IknjHqROkd8exQ/GU+OyxcugLnIk819MtuH0Rl/9ksrtzobpUV0whVAreDbIR/UJQSEPZ8hXGQn8+RKcuzPQBg==" length="2432930" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 3.0.2</title>
@@ -52,7 +52,7 @@
       <sparkle:version>108</sparkle:version>
       <sparkle:shortVersionString>3.0.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v3.0.2/Marmot-3.0.2.zip" sparkle:edSignature="lZX7ej88Ke7j2rMwlCH2NpeNjupU3P0JtRdsEVy9a2/eqpW5LNMGFAIjyzqmUDxnHElgMh7b6rD/i7XyOGLWBw==" length="2433024" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v3.0.2/Marmot-3.0.2.zip" sparkle:edSignature="lZX7ej88Ke7j2rMwlCH2NpeNjupU3P0JtRdsEVy9a2/eqpW5LNMGFAIjyzqmUDxnHElgMh7b6rD/i7XyOGLWBw==" length="2433024" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 3.0.1</title>
@@ -60,7 +60,7 @@
       <sparkle:version>105</sparkle:version>
       <sparkle:shortVersionString>3.0.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v3.0.1/Marmot-3.0.1.zip" sparkle:edSignature="yM9jbAxpu1f5iniMCk2FnTuWgneErm5m/ypA3XAXCG7PiFbao/89PA8T5Yi+6RNg6nRl0LUYZDfb8Y7egeC3CQ==" length="2427102" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v3.0.1/Marmot-3.0.1.zip" sparkle:edSignature="yM9jbAxpu1f5iniMCk2FnTuWgneErm5m/ypA3XAXCG7PiFbao/89PA8T5Yi+6RNg6nRl0LUYZDfb8Y7egeC3CQ==" length="2427102" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 3.0.0</title>
@@ -68,7 +68,7 @@
       <sparkle:version>102</sparkle:version>
       <sparkle:shortVersionString>3.0.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v3.0.0/Marmot-3.0.0.zip" sparkle:edSignature="6sT7Iml9fpTUKssw5M+E4c4l0Suex6soKxHyzFSLS8BGhclgoOlrouygUrfcyxJ4MNtDiiXme7pCZCfV2BuhCQ==" length="2426296" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v3.0.0/Marmot-3.0.0.zip" sparkle:edSignature="6sT7Iml9fpTUKssw5M+E4c4l0Suex6soKxHyzFSLS8BGhclgoOlrouygUrfcyxJ4MNtDiiXme7pCZCfV2BuhCQ==" length="2426296" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.8.2</title>
@@ -76,7 +76,7 @@
       <sparkle:version>96</sparkle:version>
       <sparkle:shortVersionString>2.8.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.8.2/Marmot-2.8.2.zip" sparkle:edSignature="eX6LsZy3GBhlDFDWcwTJ5EYcu3v06j0+3kYPU4hIPQ+/mhJifORyuPS0+0r0QLZClT58Hh+iDT1G5FiWNDCqAg==" length="2427164" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.8.2/Marmot-2.8.2.zip" sparkle:edSignature="eX6LsZy3GBhlDFDWcwTJ5EYcu3v06j0+3kYPU4hIPQ+/mhJifORyuPS0+0r0QLZClT58Hh+iDT1G5FiWNDCqAg==" length="2427164" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.8.1</title>
@@ -84,7 +84,7 @@
       <sparkle:version>93</sparkle:version>
       <sparkle:shortVersionString>2.8.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.8.1/Marmot-2.8.1.zip" sparkle:edSignature="ZZJmdJbD3zFGuwHx7kUT3SeYnHMXLLxFt0PfO8Kf5Zx1CJjPyNnB05vEFRTK0qCpPpmS0hfHDpE1cIDfZwi/Bg==" length="2421421" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.8.1/Marmot-2.8.1.zip" sparkle:edSignature="ZZJmdJbD3zFGuwHx7kUT3SeYnHMXLLxFt0PfO8Kf5Zx1CJjPyNnB05vEFRTK0qCpPpmS0hfHDpE1cIDfZwi/Bg==" length="2421421" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.8.0</title>
@@ -92,7 +92,7 @@
       <sparkle:version>90</sparkle:version>
       <sparkle:shortVersionString>2.8.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.8.0/Marmot-2.8.0.zip" sparkle:edSignature="rju9GOkWFosLQbFpsWl3s1xIbeQTsAc2R/dNi8X9y9xYdN8bMj3hFtBovJf65aiMgpx7hD7o58YP5VVA3g57Cw==" length="2419334" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.8.0/Marmot-2.8.0.zip" sparkle:edSignature="rju9GOkWFosLQbFpsWl3s1xIbeQTsAc2R/dNi8X9y9xYdN8bMj3hFtBovJf65aiMgpx7hD7o58YP5VVA3g57Cw==" length="2419334" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.7.2</title>
@@ -100,7 +100,7 @@
       <sparkle:version>83</sparkle:version>
       <sparkle:shortVersionString>2.7.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.7.2/Marmot-2.7.2.zip" sparkle:edSignature="48IYi5dgU8nw/4gg8gEBU33enRCmqV7aYsjcKZL5H/K5DhDA0c2lb2ZfchISJpwh52kly0WFz6AcP258uuDmAg==" length="2398807" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.7.2/Marmot-2.7.2.zip" sparkle:edSignature="48IYi5dgU8nw/4gg8gEBU33enRCmqV7aYsjcKZL5H/K5DhDA0c2lb2ZfchISJpwh52kly0WFz6AcP258uuDmAg==" length="2398807" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.7.1</title>
@@ -108,7 +108,7 @@
       <sparkle:version>81</sparkle:version>
       <sparkle:shortVersionString>2.7.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.7.1/Marmot-2.7.1.zip" sparkle:edSignature="MsAyexTagHY6WAuG+qQQMborF0By4KikHkzbGdKl2tzDj2TY1h9kufXNSQ2CeawOj8KQqvIOovJ1si4deQxaCw==" length="2398806" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.7.1/Marmot-2.7.1.zip" sparkle:edSignature="MsAyexTagHY6WAuG+qQQMborF0By4KikHkzbGdKl2tzDj2TY1h9kufXNSQ2CeawOj8KQqvIOovJ1si4deQxaCw==" length="2398806" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.7.0</title>
@@ -116,7 +116,7 @@
       <sparkle:version>73</sparkle:version>
       <sparkle:shortVersionString>2.7.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.7.0/Marmot-2.7.0.zip" sparkle:edSignature="m8/svwPJqnapYxOL5Y/CspP44XKvfVkM/HxJp/WjiKwzCkJuK2dnUIq+KERInRcDR9284vZSwnQ80CEj5fGGBg==" length="2350278" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.7.0/Marmot-2.7.0.zip" sparkle:edSignature="m8/svwPJqnapYxOL5Y/CspP44XKvfVkM/HxJp/WjiKwzCkJuK2dnUIq+KERInRcDR9284vZSwnQ80CEj5fGGBg==" length="2350278" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.6.0</title>
@@ -124,7 +124,7 @@
       <sparkle:version>68</sparkle:version>
       <sparkle:shortVersionString>2.6.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.6.0/Marmot-2.6.0.zip" sparkle:edSignature="2kBByxd3SWdv3zCsd6i7GzhhopBMvV1gEFQLjplUKIHLbOYZfJOJ4rw29YDasTXxTBtcilh1JQwQV1aWqNB5AQ==" length="2286362" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.6.0/Marmot-2.6.0.zip" sparkle:edSignature="2kBByxd3SWdv3zCsd6i7GzhhopBMvV1gEFQLjplUKIHLbOYZfJOJ4rw29YDasTXxTBtcilh1JQwQV1aWqNB5AQ==" length="2286362" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.5.0</title>
@@ -132,7 +132,7 @@
       <sparkle:version>65</sparkle:version>
       <sparkle:shortVersionString>2.5.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.5.0/Marmot-2.5.0.zip" sparkle:edSignature="Ha3wnnOjZjJAX+g3/1cxiXHTETardEExsgvCDi3teb9R/r4P8Y1tgBlcEfG4QAtnyvZdm2Fd3RaRLts12iKhDA==" length="2280854" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.5.0/Marmot-2.5.0.zip" sparkle:edSignature="Ha3wnnOjZjJAX+g3/1cxiXHTETardEExsgvCDi3teb9R/r4P8Y1tgBlcEfG4QAtnyvZdm2Fd3RaRLts12iKhDA==" length="2280854" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.4.0</title>
@@ -140,7 +140,7 @@
       <sparkle:version>58</sparkle:version>
       <sparkle:shortVersionString>2.4.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.4.0/Marmot-2.4.0.zip" sparkle:edSignature="OF6/fILohEe7V3Z2aR/OBeUlDdA2csDiLbe7I6LezCaqdbY8h1voX/4iB3pBWaBs/JDFR4JSHbDXms//zukECw==" length="2267472" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.4.0/Marmot-2.4.0.zip" sparkle:edSignature="OF6/fILohEe7V3Z2aR/OBeUlDdA2csDiLbe7I6LezCaqdbY8h1voX/4iB3pBWaBs/JDFR4JSHbDXms//zukECw==" length="2267472" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.3.0</title>
@@ -148,7 +148,7 @@
       <sparkle:version>54</sparkle:version>
       <sparkle:shortVersionString>2.3.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.3.0/Marmot-2.3.0.zip" sparkle:edSignature="8eMI+8UKCFiGfSVtGWgWaBkFQQCCnamkLGLKaoKNOcrY0bpxNbwiZ/kjaPVmwqCXzCurx55bpapAqQ1OjNh2Cw==" length="2235653" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.3.0/Marmot-2.3.0.zip" sparkle:edSignature="8eMI+8UKCFiGfSVtGWgWaBkFQQCCnamkLGLKaoKNOcrY0bpxNbwiZ/kjaPVmwqCXzCurx55bpapAqQ1OjNh2Cw==" length="2235653" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.2.0</title>
@@ -156,7 +156,7 @@
       <sparkle:version>49</sparkle:version>
       <sparkle:shortVersionString>2.2.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.2.0/Marmot-2.2.0.zip" sparkle:edSignature="edaNNEM4llonSdo2GN9k2W33rL9R7mPA1RxClHKS/u6HZ9E3NhIUCZJPTo1J5na6zTpFnWWGRuABGIQytxuEAA==" length="2175092" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.2.0/Marmot-2.2.0.zip" sparkle:edSignature="edaNNEM4llonSdo2GN9k2W33rL9R7mPA1RxClHKS/u6HZ9E3NhIUCZJPTo1J5na6zTpFnWWGRuABGIQytxuEAA==" length="2175092" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.1.2</title>
@@ -164,7 +164,7 @@
       <sparkle:version>42</sparkle:version>
       <sparkle:shortVersionString>2.1.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.1.2/Marmot-2.1.2.zip" sparkle:edSignature="W/22jTDLj0w71O32OmQcDXtN343P4Sr44PCy3Rw+uC6ecVkMtmkj1L3bZRURO6AeZBcq4Q80VWUogqr9TSInCw==" length="2155877" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.1.2/Marmot-2.1.2.zip" sparkle:edSignature="W/22jTDLj0w71O32OmQcDXtN343P4Sr44PCy3Rw+uC6ecVkMtmkj1L3bZRURO6AeZBcq4Q80VWUogqr9TSInCw==" length="2155877" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.1.1</title>
@@ -172,7 +172,7 @@
       <sparkle:version>39</sparkle:version>
       <sparkle:shortVersionString>2.1.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.1.1/Marmot-2.1.1.zip" sparkle:edSignature="vX+irc3Cr+VCqLTiiktmLbgQvC3SkfjlMFbhvEslQD0SScFFf4Ztt1zce7fQ3uDnDef/KDHVdjQGye43Ph7XBQ==" length="2154657" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.1.1/Marmot-2.1.1.zip" sparkle:edSignature="vX+irc3Cr+VCqLTiiktmLbgQvC3SkfjlMFbhvEslQD0SScFFf4Ztt1zce7fQ3uDnDef/KDHVdjQGye43Ph7XBQ==" length="2154657" type="application/octet-stream" />
     </item>
     <item>
       <title>Marmot 2.1.0</title>
@@ -180,7 +180,7 @@
       <sparkle:version>34</sparkle:version>
       <sparkle:shortVersionString>2.1.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/EPeiffer94/Marmot/releases/download/v2.1.0/Marmot-2.1.0.zip" sparkle:edSignature="wGEj4S1RKGNGWFwVhFYWAt7ye5rKDodRQqVHWyAeNMXDXQdqPrpVDLjpOF6MD/+q8PZiIIBCxiaHD5qP2xnxCg==" length="2153430" type="application/octet-stream" />
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v2.1.0/Marmot-2.1.0.zip" sparkle:edSignature="wGEj4S1RKGNGWFwVhFYWAt7ye5rKDodRQqVHWyAeNMXDXQdqPrpVDLjpOF6MD/+q8PZiIIBCxiaHD5qP2xnxCg==" length="2153430" type="application/octet-stream" />
     </item>
   </channel>
 </rss>

@@ -20,10 +20,10 @@ Marmot cleans caches and junk, uninstalls apps along with their leftovers, finds
 Requires macOS 26 (Tahoe) or later.
 
 ```sh
-brew install --cask EPeiffer94/marmot/marmot
+brew install --cask Kasakir-AI/marmot/marmot
 ```
 
-Or download the latest `Marmot-x.y.z.zip` from [Releases](https://github.com/EPeiffer94/Marmot/releases), unzip it, and drag Marmot.app into Applications.
+Or download the latest `Marmot-x.y.z.zip` from [Releases](https://github.com/Kasakir-AI/Marmot/releases), unzip it, and drag Marmot.app into Applications.
 
 **First launch:** Marmot isn't notarized by Apple, so macOS blocks it once. Open it, click **Done** (not Move to Trash), then go to **System Settings → Privacy & Security** and click **Open Anyway**. Or run this in Terminal:
 
@@ -31,7 +31,7 @@ Or download the latest `Marmot-x.y.z.zip` from [Releases](https://github.com/EPe
 xattr -cr /Applications/Marmot.app && open /Applications/Marmot.app
 ```
 
-**On macOS 13–15?** Use [Marmot 3.2.0](https://github.com/EPeiffer94/Marmot/releases/tag/v3.2.0), the last version that supports them. Homebrew won't install it, so download the zip from that release.
+**On macOS 13–15?** Use [Marmot 3.2.0](https://github.com/Kasakir-AI/Marmot/releases/tag/v3.2.0), the last version that supports them. Homebrew won't install it, so download the zip from that release.
 
 ## How it works
 
@@ -116,7 +116,7 @@ Marmot updates itself through [Sparkle](https://sparkle-project.org). Every upda
 You need macOS 26 and full Xcode 26 (free from the App Store). Command Line Tools alone won't build it.
 
 ```sh
-git clone https://github.com/EPeiffer94/Marmot.git
+git clone https://github.com/Kasakir-AI/Marmot.git
 cd Marmot
 make run
 ```
@@ -125,7 +125,7 @@ make run
 
 ## Support
 
-Marmot is free and will stay that way. If it helped you, you can [star the repo](https://github.com/EPeiffer94/Marmot), [buy me a coffee on Ko-fi](https://ko-fi.com/kasakir) or [sponsor on GitHub](https://github.com/sponsors/EPeiffer94).
+Marmot is free and will stay that way. If it helped you, you can [star the repo](https://github.com/Kasakir-AI/Marmot), [buy me a coffee on Ko-fi](https://ko-fi.com/kasakir) or [sponsor on GitHub](https://github.com/sponsors/Kasakir-AI).
 
 ## License
 

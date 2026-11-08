@@ -42,7 +42,7 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>SUFeedURL</key>
-    <string>https://raw.githubusercontent.com/EPeiffer94/Marmot/main/appcast.xml</string>
+    <string>https://raw.githubusercontent.com/Kasakir-AI/Marmot/main/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>/WJd11E+6F3OJHOZDtkzBhBpUeYOmdjXiDce49d/juM=</string>
     <key>SUEnableAutomaticChecks</key>
