@@ -107,7 +107,7 @@ struct WrappedCard: View {
             }
             .padding(.horizontal, 8)
 
-            Text("Marmot — the free, open-source Mac cleaner\ngithub.com/EPeiffer94/Marmot")
+            Text("Marmot — the free, open-source Mac cleaner\ngithub.com/Kasakir-AI/Marmot")
                 .font(.caption2)
                 .multilineTextAlignment(.center)
                 .opacity(0.7)

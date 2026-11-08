@@ -1,7 +1,7 @@
 #!/bin/sh
 # Regenerates packaging/homebrew/marmot.rb for the current release zip.
 # Run after `make release`, then copy the file into the tap repo:
-#   github.com/EPeiffer94/homebrew-marmot → Casks/marmot.rb
+#   github.com/Kasakir-AI/homebrew-marmot → Casks/marmot.rb
 set -e
 cd "$(dirname "$0")/.."
 
@@ -12,16 +12,16 @@ SHA=$(shasum -a 256 "$ZIP" | awk '{print $1}')
 
 cat > packaging/homebrew/marmot.rb << EOF
 # Homebrew cask for Marmot.
-# Lives in the tap repo: github.com/EPeiffer94/homebrew-marmot (Casks/marmot.rb)
+# Lives in the tap repo: github.com/Kasakir-AI/homebrew-marmot (Casks/marmot.rb)
 # Regenerate for each release with: sh scripts/make-cask.sh
 cask "marmot" do
   version "$VERSION"
   sha256 "$SHA"
 
-  url "https://github.com/EPeiffer94/Marmot/releases/download/v#{version}/Marmot-#{version}.zip"
+  url "https://github.com/Kasakir-AI/Marmot/releases/download/v#{version}/Marmot-#{version}.zip"
   name "Marmot"
   desc "Free, open-source Mac cleaner that shows everything before it touches anything"
-  homepage "https://github.com/EPeiffer94/Marmot"
+  homepage "https://github.com/Kasakir-AI/Marmot"
 
   # Marmot updates itself via Sparkle after install.
   auto_updates true

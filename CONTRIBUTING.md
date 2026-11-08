@@ -7,7 +7,7 @@ Thanks for wanting to help! Marmot is a free, open-source Mac utility, and contr
 You'll need macOS 26+ and **full Xcode 26** — free from the App Store, no paid developer account required.
 
 ```sh
-git clone https://github.com/EPeiffer94/Marmot.git
+git clone https://github.com/Kasakir-AI/Marmot.git
 cd Marmot
 make run        # builds Marmot.app and launches it
 swift test      # runs the safety-rule test suite
@@ -79,4 +79,4 @@ The Sparkle signing key lives in the maintainer's Keychain; keep an exported bac
 
 ## Questions?
 
-Open a [Discussion](https://github.com/EPeiffer94/Marmot/discussions) or an issue. Be kind; we're all here because we like our Macs tidy. 💛
+Open a [Discussion](https://github.com/Kasakir-AI/Marmot/discussions) or an issue. Be kind; we're all here because we like our Macs tidy. 💛

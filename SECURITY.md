@@ -4,7 +4,7 @@ Marmot deletes files for a living, so its security posture is the product. This 
 
 ## Reporting a vulnerability
 
-Open a [GitHub security advisory](https://github.com/EPeiffer94/Marmot/security/advisories/new) (preferred, private) or email the maintainer. Please don't open a public issue for anything exploitable. You'll get a response within a few days, credit in the release notes if you want it, and our sincere gratitude.
+Open a [GitHub security advisory](https://github.com/Kasakir-AI/Marmot/security/advisories/new) (preferred, private) or email the maintainer. Please don't open a public issue for anything exploitable. You'll get a response within a few days, credit in the release notes if you want it, and our sincere gratitude.
 
 ## Threat model
 
