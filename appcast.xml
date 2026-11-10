@@ -7,6 +7,14 @@
     <language>en</language>
     <!-- MARMOT_APPCAST_ITEMS -->
     <item>
+      <title>Marmot x.y.z</title>
+      <pubDate>Tue, 10 Nov 2026 16:29:13 -0500</pubDate>
+      <sparkle:version>145</sparkle:version>
+      <sparkle:shortVersionString>x.y.z</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/vx.y.z/Marmot-x.y.z.zip" sparkle:edSignature="0IsiYHBptBDrzJWdeNDurppLGHJK2DdYXYEvoCJuM9P4kA+mvuZpqMi1SZIbQkpcva9TsESr65MW5r1d8BgyCQ==" length="2409146" type="application/octet-stream" />
+    </item>
+    <item>
       <title>Marmot 4.0.0</title>
       <pubDate>Mon, 03 Aug 2026 13:50:58 -0400</pubDate>
       <sparkle:version>132</sparkle:version>
