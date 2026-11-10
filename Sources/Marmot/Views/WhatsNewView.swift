@@ -10,14 +10,14 @@ enum WhatsNew {
     }
 
     static let highlights: [(icon: String, text: String)] = [
-        ("sparkles",
-         "Marmot is rebuilt for macOS 26 — Liquid Glass on the toast, drop target, and ⌘K palette, with the system chrome to match."),
-        ("gauge.with.needle",
-         "The health score shows its receipt — every factor, its live reading, and the exact points it costs."),
-        ("light.beacon.max",
-         "Startup Sentinel calls out suspicious new launch items — Apple impersonators, programs in temp or hidden folders."),
-        ("bolt",
-         "Scan results survive navigation, app sizes appear instantly on relaunch, and duplicate hashing is easier on your disk.")
+        ("doc.on.doc",
+         "Duplicates now works in folders you add, like an external drive, and checks each copy byte for byte against the one you keep."),
+        ("folder.badge.gearshape",
+         "Build folders in ~/Documents/GitHub are cleaned instead of skipped, and .iso files in Downloads are no longer selected for you."),
+        ("arrow.down.circle",
+         "App Updates finds more Sparkle updates and stops reporting ones that aren't real."),
+        ("checkmark.shield",
+         "Uninstalls stop if the app won't quit or the Time Capsule backup fails, and quitting the app no longer asks you where it is.")
     ]
 
     /// True once per updated version, never on a fresh install (onboarding
