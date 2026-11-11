@@ -53,7 +53,7 @@ struct AutopilotView: View {
 
     private var ruleList: some View {
         List {
-            Label("Rules run while Marmot is open (keep the menu bar HUD on). Every run goes to the Trash and shows up in History — undo anytime.",
+            Label("Rules run while Marmot is open (keep the menu bar HUD on). Only low-risk items run unattended. Every run goes to the Trash and shows up in History — undo anytime.",
                   systemImage: "info.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -166,7 +166,7 @@ struct RuleEditor: View {
                     }
                 }
                 if rule.categoryIDs.contains("trash") {
-                    Text("Heads up: emptying the Trash is permanent — those items can't be restored afterwards.")
+                    Text("Heads up: emptying the Trash is permanent. Autopilot only empties items that have been in the Trash for \(Int(Autopilot.trashMinimumAgeDays)) days or more.")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }

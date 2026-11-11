@@ -53,6 +53,31 @@ final class Autopilot: ObservableObject {
     /// permanence is called out in the rule editor.
     static let excludedCategoryIDs: Set<String> = ["artifacts", "orphans"]
 
+    /// Days an item must sit in the Trash before Autopilot may empty it,
+    /// so Undo (and the user's own change of heart) keeps working.
+    static let trashMinimumAgeDays: Double = 7
+
+    /// What an unattended run may touch: pre-selected low-risk items, plus
+    /// Trash items that have been there long enough. Medium-risk items
+    /// (Apple's own caches, for example) need a person looking at the preview.
+    static func isEligibleUnattended(_ item: ChangeItem, addedToTrash: Date?,
+                                     now: Date = Date()) -> Bool {
+        guard item.isSelected else { return false }
+        if item.group == "Trash" {
+            // Unknown age counts as "too new": never guess on a permanent delete.
+            guard let added = addedToTrash else { return false }
+            return now.timeIntervalSince(added) >= trashMinimumAgeDays * 86_400
+        }
+        return item.risk == .low
+    }
+
+    /// When an item was moved into its current folder (the Trash), as the
+    /// file system records it. Nil if unknown.
+    static func addedToTrashDate(_ path: String) -> Date? {
+        let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.addedToDirectoryDateKey])
+        return values?.addedToDirectoryDate
+    }
+
     static var eligibleCategories: [CleanupCategory] {
         CleanupScanner.categories().filter { !excludedCategoryIDs.contains($0.id) }
     }
@@ -112,7 +137,11 @@ final class Autopilot: ObservableObject {
 
             let items = await Task.detached(priority: .utility) {
                 categoryIDs.flatMap { CleanupScanner.scan(categoryID: $0) }
-            }.value.filter(\.isSelected) // respects conservative default selections
+            }.value.filter { item in
+                Self.isEligibleUnattended(
+                    item,
+                    addedToTrash: item.group == "Trash" ? Self.addedToTrashDate(item.target) : nil)
+            }
 
             guard !items.isEmpty else {
                 self.markRan(rule, freed: 0)
