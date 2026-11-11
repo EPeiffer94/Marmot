@@ -315,6 +315,7 @@ ZIP="Marmot-$NEW.zip"
 DRAFT=".build/release-notes-$NEW.draft.md"   # raw: PR titles, commits
 NOTES=".build/release-notes-$NEW.md"         # what will be published (before confirming)
 FINAL=".build/release-notes-$NEW.final.md"   # locked in once you confirm
+NOTES_FOR=".build/release-notes-$NEW.commit" # the commit the notes describe
 
 # Build now, before anything changes, so a broken build never leaves a
 # pushed version bump behind. The real build later reuses this work.
@@ -340,8 +341,13 @@ fi
 
 # ---------------------------------------------------------------- notes
 if [ ! -s "$FINAL" ]; then
-    # Write notes unless there are some already; an unedited raw draft
-    # (e.g. from an earlier run when Claude Code wasn't available) is retried.
+    # Write notes unless there are some already for this exact commit. An
+    # unedited raw draft (Claude Code was unavailable) is retried, and notes
+    # from an earlier run are rewritten once new commits have landed.
+    if [ -s "$NOTES" ] && [ "$(cat "$NOTES_FOR" 2>/dev/null)" != "$(git rev-parse HEAD)" ]; then
+        warn "There are new commits since these notes were written, so they're being rewritten."
+        rm -f "$NOTES"
+    fi
     if [ ! -s "$NOTES" ] || { grep -q '^<!-- Draft notes' "$NOTES" \
             && { [ ! -s "$DRAFT" ] || cmp -s "$NOTES" "$DRAFT"; }; }; then
         draft_notes > "$DRAFT"
@@ -359,6 +365,7 @@ if [ ! -s "$FINAL" ]; then
             fi
         fi
     fi
+    git rev-parse HEAD > "$NOTES_FOR"
     say "Release notes (GitHub release, in-app update window and CHANGELOG.md)"
     show_notes "$NOTES"
     if grep -q '^<!--' "$NOTES"; then
@@ -554,7 +561,7 @@ else
 fi
 
 # The zip is safely on GitHub (checked above); don't let them pile up here.
-rm -f "$ZIP" "$DRAFT" "$NOTES" "$FINAL" "$STATE" .build/notes-commits.tsv .build/notes-prs.json
+rm -f "$ZIP" "$DRAFT" "$NOTES" "$FINAL" "$NOTES_FOR" "$STATE" .build/notes-commits.tsv .build/notes-prs.json
 trap - ERR
 say "Marmot $NEW is released"
 echo "  https://github.com/$REPO/releases/tag/$TAG"
