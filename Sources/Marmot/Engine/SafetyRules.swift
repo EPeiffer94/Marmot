@@ -148,7 +148,7 @@ enum SafetyRules {
         if allowPurgeRoots { roots += purgeRoots }
         if allowUserFiles { roots += userDataPrefixes }
         roots += extras
-        let matching = roots.map(normalize).filter { isStrictlyInside(p, $0) }
+        let matching = roots.map(normalize).filter { isStrictlyInsideExact(p, $0) }
         guard let root = matching.max(by: { $0.count < $1.count }) else { return false }
 
         // The string checks above only mean something if the path really
@@ -160,8 +160,9 @@ enum SafetyRules {
     }
 
     /// True when `p` sits strictly inside one of `roots`.
+    /// Grants permission, so it matches exactly (see "Path comparison").
     static func isInside(_ p: String, anyOf roots: [String]) -> Bool {
-        roots.contains { isStrictlyInside(p, normalize($0)) }
+        roots.contains { isStrictlyInsideExact(p, normalize($0)) }
     }
 
     /// Project folders the user keeps inside a protected content area, such
@@ -170,7 +171,7 @@ enum SafetyRules {
     /// whole folder.
     static func isInsideUserDataPurgeRoot(_ p: String) -> Bool {
         let unlocked = purgeRoots.map(normalize).filter { root in
-            !root.contains("..") && userDataPrefixes.contains { isStrictlyInside(root, normalize($0)) }
+            !root.contains("..") && userDataPrefixes.contains { isStrictlyInsideExact(root, normalize($0)) }
         }
         return isInside(p, anyOf: unlocked)
     }
@@ -192,10 +193,15 @@ enum SafetyRules {
     }
 
     // MARK: - Path comparison
+    //
+    // Fail closed both ways. Rules that PROTECT (system areas, user data,
+    // the whitelist, too-broad picks) compare case- and
+    // normalization-insensitively, because APFS treats ".../documents" and
+    // ".../Documents" as the same folder. Rules that GRANT permission
+    // (allowed roots, unlocked folders) match exactly, so an odd-case
+    // spelling never unlocks anything.
 
-    /// Comparison key. APFS is case- and normalization-insensitive by
-    /// default, so ".../documents" and ".../Documents" are the same folder
-    /// and must be treated the same by every rule.
+    /// Comparison key for protective rules.
     static func pathKey(_ path: String) -> String {
         path.precomposedStringWithCanonicalMapping.lowercased()
     }
@@ -210,6 +216,11 @@ enum SafetyRules {
     static func isStrictlyInside(_ p: String, _ root: String) -> Bool {
         let a = pathKey(p), r = pathKey(root)
         return a.hasPrefix(r + "/") && a.count > r.count + 1
+    }
+
+    /// Exact (case-sensitive) strict containment, for permission rules.
+    static func isStrictlyInsideExact(_ p: String, _ root: String) -> Bool {
+        p.hasPrefix(root + "/") && p.count > root.count + 1
     }
 
     /// True when a folder *between* `root` and the item is a symbolic link.
