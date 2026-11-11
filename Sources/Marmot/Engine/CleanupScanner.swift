@@ -214,11 +214,23 @@ enum CleanupScanner {
             let base = name.hasSuffix(".plist") ? String(name.dropLast(6)) : name
             return base.lowercased()
         }
+        var launchServicesAnswers: [String: Bool] = [:]
         func isOrphan(_ name: String) -> Bool {
             let id = owner(of: name)
             guard looksLikeBundleID(name) else { return false }
             guard !id.hasPrefix("com.apple.") && !id.hasPrefix("group.com.apple.") else { return false }
-            return !installed.contains { id == $0 || id.hasPrefix($0 + ".") || $0.hasPrefix(id + ".") }
+            if installed.contains(where: { id == $0 || id.hasPrefix($0 + ".") || $0.hasPrefix(id + ".") }) {
+                return false
+            }
+            // The folder scan only covers /Applications (one level deep) and
+            // ~/Applications. Before calling anything orphaned, ask Launch
+            // Services, which knows about apps anywhere — deeper folders,
+            // external drives, Setapp and the like.
+            let base = name.hasSuffix(".plist") ? String(name.dropLast(6)) : name
+            if let known = launchServicesAnswers[id] { return !known }
+            let known = isKnownToLaunchServices(base)
+            launchServicesAnswers[id] = known
+            return !known
         }
 
         let locations: [(String, String, RiskLevel)] = [
@@ -226,8 +238,9 @@ enum CleanupScanner {
             (home + "/Library/Application Support", "Orphaned App Support", .medium),
             (home + "/Library/Preferences", "Orphaned Preferences", .medium),
             (home + "/Library/Saved Application State", "Orphaned Saved State", .low),
-            (home + "/Library/HTTPStorages", "Orphaned HTTP Storage", .low),
-            (home + "/Library/WebKit", "Orphaned WebKit Data", .low)
+            // Cookies and web storage can hold an app's sign-ins: review first.
+            (home + "/Library/HTTPStorages", "Orphaned HTTP Storage", .medium),
+            (home + "/Library/WebKit", "Orphaned WebKit Data", .medium)
         ]
         var specs: [Spec] = []
         for (dir, group, risk) in locations {
@@ -245,6 +258,20 @@ enum CleanupScanner {
             }
         }
         return buildItems(specs, minSize: 4096)
+    }
+
+    /// True when Launch Services knows an app with this bundle ID, or with
+    /// a parent ID (com.vendor.app for com.vendor.app.helper).
+    static func isKnownToLaunchServices(_ bundleID: String) -> Bool {
+        var parts = bundleID.split(separator: ".").map(String.init)
+        while parts.count >= 3 {
+            let candidate = parts.joined(separator: ".")
+            if !NSWorkspace.shared.urlsForApplications(withBundleIdentifier: candidate).isEmpty {
+                return true
+            }
+            parts.removeLast()
+        }
+        return false
     }
 
     static func installedBundleIDs() -> Set<String> {
@@ -306,17 +333,49 @@ enum CleanupScanner {
                 guard fm.fileExists(atPath: project, isDirectory: &isDir), isDir.boolValue else { continue }
                 let recent = (FileSizer.modificationDate(project) ?? .distantPast) > cutoff
                 let projectName = (project as NSString).lastPathComponent
+                let siblings = Set(children(of: project).map { ($0 as NSString).lastPathComponent })
                 for artifact in children(of: project)
                 where artifactNames.contains((artifact as NSString).lastPathComponent) {
                     let name = (artifact as NSString).lastPathComponent
+                    // "build", "dist" and "target" are ordinary folder names
+                    // too. Only pre-select when the project file that
+                    // generates them is right next to them.
+                    let generated = hasArtifactMarker(name: name, artifact: artifact, siblings: siblings)
+                    var note = "\(name) in \(projectName)"
+                    if recent { note += " — project modified within 7 days" }
+                    if !generated { note += " — no matching project file found, so it may be real content" }
                     specs.append(Spec(path: artifact, group: "Build Artifacts",
-                                      risk: recent ? .medium : .low,
-                                      note: "\(name) in \(projectName)\(recent ? " — project modified within 7 days" : "").",
-                                      selected: !recent))
+                                      risk: recent || !generated ? .medium : .low,
+                                      note: note + ".",
+                                      selected: !recent && generated))
                 }
             }
         }
         return buildItems(specs, minSize: 10 * 1024 * 1024)
+    }
+
+    /// Project files that produce each artifact folder.
+    static let artifactMarkers: [String: [String]] = [
+        "node_modules": ["package.json"],
+        ".next": ["package.json"],
+        ".nuxt": ["package.json"],
+        "dist": ["package.json", "pyproject.toml", "setup.py"],
+        "build": ["package.json", "build.gradle", "build.gradle.kts", "settings.gradle",
+                  "CMakeLists.txt", "setup.py", "pyproject.toml"],
+        "target": ["Cargo.toml", "pom.xml", "build.sbt"],
+        ".build": ["Package.swift"],
+        "Pods": ["Podfile"]
+    ]
+
+    /// True when the folder is evidently generated: its project file sits
+    /// beside it (an .xcodeproj counts for "build"), or, for virtualenvs,
+    /// it carries its own pyvenv.cfg.
+    static func hasArtifactMarker(name: String, artifact: String, siblings: Set<String>) -> Bool {
+        if name == "venv" || name == ".venv" {
+            return fm.fileExists(atPath: artifact + "/pyvenv.cfg")
+        }
+        if name == "build" && siblings.contains(where: { $0.hasSuffix(".xcodeproj") }) { return true }
+        return (artifactMarkers[name] ?? []).contains { siblings.contains($0) }
     }
 
     static func scanTrash() -> [ChangeItem] {

@@ -14,6 +14,8 @@ final class DiskMapModel: ObservableObject {
     @Published var progressPath = ""
     @Published var scanTarget = NSHomeDirectory()
     @Published var folderMovers: FolderTrends.Movers?
+    /// The last scan was cancelled: the tree is incomplete.
+    @Published var partial = false
 
     private var scanner: DiskScanner?
 
@@ -37,7 +39,12 @@ final class DiskMapModel: ObservableObject {
             self.currentNode = tree
             self.largeFiles = s.largeFiles
             self.scanning = false
-            FolderTrends.shared.record(root: target, children: tree.children)
+            self.partial = s.isCancelled
+            // A cancelled scan undercounts everything it didn't reach;
+            // recording it would show fake "shrinking" folders in Trends.
+            if !s.isCancelled {
+                FolderTrends.shared.record(root: target, children: tree.children)
+            }
             self.folderMovers = FolderTrends.shared.movers(root: target)
         }
     }

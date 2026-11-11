@@ -164,6 +164,10 @@ struct PlanPreviewView: View {
             ))
             .toggleStyle(.checkbox)
             .labelsHidden()
+            // Quitting the app and the Time Capsule backup are what make the
+            // rest of the plan safe, so they can't be switched off here.
+            .disabled(PlanGroup.prerequisites.contains(item.group))
+            .help(requiredTip(for: item))
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
@@ -183,6 +187,12 @@ struct PlanPreviewView: View {
                     Text(item.note)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if let warning = protectionWarning(for: item) {
+                    Label(warning, systemImage: "lock.shield")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
                         .lineLimit(2)
                 }
                 Text(item.target)
@@ -221,6 +231,25 @@ struct PlanPreviewView: View {
                 }
             }
         }
+    }
+
+    private func requiredTip(for item: ChangeItem) -> String {
+        PlanGroup.prerequisites.contains(item.group)
+            ? "Required: the rest of the plan only runs after this step succeeds."
+            : ""
+    }
+
+    /// Protected-path conflicts are shown before applying, not discovered
+    /// after: the executor will skip these items whatever their checkbox says.
+    private func protectionWarning(for item: ChangeItem) -> String? {
+        guard item.action == .moveToTrash || item.action == .deletePermanently else { return nil }
+        if SafetyRules.isWhitelisted(item.target) {
+            return "Protected path. It will be skipped."
+        }
+        if let inner = SafetyRules.whitelistedDescendant(of: item.target) {
+            return "Contains a protected path (\((inner as NSString).lastPathComponent)). It will be skipped."
+        }
+        return nil
     }
 
     private func iconName(for item: ChangeItem) -> String {
@@ -297,7 +326,7 @@ struct PlanPreviewView: View {
                     Button("Done") {
                         // Let the main window show the freed-space toast
                         // (with Undo) once the sheet is out of the way.
-                        if result.freedBytes > 0 {
+                        if result.removedBytes > 0 {
                             NotificationCenter.default.post(
                                 name: .marmotPlanApplied, object: nil,
                                 userInfo: ["result": result])
@@ -327,6 +356,7 @@ struct PlanPreviewView: View {
     private func setAll(_ value: Bool) {
         for i in plan.items.indices {
             if value && plan.items[i].risk == .high { continue }
+            if PlanGroup.prerequisites.contains(plan.items[i].group) { continue }
             plan.items[i].isSelected = value
         }
     }
@@ -361,11 +391,23 @@ struct ResultsView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 24) {
-                summaryStat(
-                    icon: result.dryRun ? "eye" : "checkmark.seal.fill",
-                    color: result.dryRun ? .blue : .green,
-                    title: result.dryRun ? "Would free" : "Freed",
-                    value: ByteFormat.string(result.dryRun ? result.wouldFreeBytes : result.freedBytes))
+                if result.dryRun {
+                    summaryStat(icon: "eye", color: .blue, title: "Would remove",
+                                value: ByteFormat.string(result.wouldFreeBytes))
+                } else {
+                    // Trash moves and deletions are shown apart: only the
+                    // second is free disk space right now.
+                    if result.trashedBytes > 0 || result.deletedBytes == 0 {
+                        summaryStat(icon: "trash.fill", color: .green,
+                                    title: "Moved to Trash (freed when emptied)",
+                                    value: ByteFormat.string(result.trashedBytes))
+                    }
+                    if result.deletedBytes > 0 {
+                        summaryStat(icon: "checkmark.seal.fill", color: .green,
+                                    title: "Deleted (space freed)",
+                                    value: ByteFormat.string(result.deletedBytes))
+                    }
+                }
                 summaryStat(icon: "list.bullet", color: .secondary,
                             title: "Items processed", value: "\(result.results.count)")
                 if !result.failures.isEmpty {
@@ -385,6 +427,13 @@ struct ResultsView: View {
                             .lineLimit(1).truncationMode(.middle)
                         HStack(spacing: 6) {
                             Text(r.outcome.rawValue).font(.caption).foregroundStyle(.secondary)
+                            if r.outcome == .done && r.item.action == .moveToTrash {
+                                // Say up front which items Undo/History can bring back.
+                                Label(r.trashedTo != nil ? "Undo available" : "No Undo",
+                                      systemImage: r.trashedTo != nil ? "arrow.uturn.backward" : "nosign")
+                                    .font(.caption2)
+                                    .foregroundStyle(r.trashedTo != nil ? Color.blue : Color.orange)
+                            }
                             if !r.detail.isEmpty {
                                 Text("— " + r.detail)
                                     .font(.caption)

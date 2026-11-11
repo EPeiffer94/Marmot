@@ -156,7 +156,14 @@ struct UninstallView: View {
             }
             // Time Capsule: archive the app and its data first, so the
             // uninstall stays reversible even after the Trash empties.
-            if !reset && timeCapsule, let destination = askForArchiveDestination(app: app) {
+            if !reset && timeCapsule {
+                // Cancelling the Save panel cancels the uninstall. Going
+                // ahead without the backup the user asked for would be a
+                // silent downgrade of a safety feature.
+                guard let destination = askForArchiveDestination(app: app) else {
+                    buildingPlan = false
+                    return
+                }
                 let paths = [app.path] + plan.items
                     .filter { $0.action == .moveToTrash && $0.target != app.path }
                     .map(\.target)
@@ -165,7 +172,8 @@ struct UninstallView: View {
                     target: "/usr/bin/zip -qry \(Shell.quoted(destination.path)) \(quoted)",
                     action: .runCommand,
                     note: "Archives the app and all its data to \(destination.lastPathComponent) before anything is removed.",
-                    group: PlanGroup.timeCapsule))
+                    group: PlanGroup.timeCapsule,
+                    verifyArchive: destination.path))
             }
             if !prefix.isEmpty {
                 plan = ChangePlan(title: plan.title, source: plan.source, items: prefix + plan.items)

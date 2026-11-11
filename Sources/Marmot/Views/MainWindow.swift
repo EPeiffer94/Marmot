@@ -284,12 +284,13 @@ struct MainWindow: View {
 
     private func showFreedToast(_ note: Notification) {
         guard let result = note.userInfo?["result"] as? ExecutionResult else { return }
-        guard result.freedBytes > 0 else { return }
+        guard result.removedBytes > 0 else { return }
         let restorables = result.results.filter {
             $0.trashedTo != nil && $0.outcome == .done
         }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            toast = FreedToast(freed: result.freedBytes, restorables: restorables)
+            toast = FreedToast(freed: result.removedBytes, summary: result.removalSummary,
+                               restorables: restorables)
         }
     }
 

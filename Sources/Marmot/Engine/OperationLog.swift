@@ -19,7 +19,9 @@ final class OperationLog {
     static let shared = OperationLog()
 
     private let queue = DispatchQueue(label: "marmot.oplog")
-    private let fileURL: URL
+    /// Internal (not private) so tests can point the log at a scratch file
+    /// instead of the user's real History.
+    var fileURL: URL
 
     private init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -32,36 +34,34 @@ final class OperationLog {
     private static let maxLogBytes = 2_000_000
     private static let keepEntries = 4000
 
-    func record(_ result: ExecutionResult, source: String) {
-        queue.async {
+    /// Write-ahead: records ONE finished item, synchronously, before the
+    /// executor moves on. If Marmot crashes or is quit mid-plan, History
+    /// still lists every item already moved, with where it went in the
+    /// Trash, so each one can be restored.
+    func append(_ r: ItemResult, source: String, dryRun: Bool, date: Date = Date()) {
+        queue.sync {
             self.rotateIfNeeded()
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
-            var lines: [Data] = []
-            for r in result.results {
-                let entry = LogEntry(
-                    date: result.finishedAt,
-                    source: source,
-                    dryRun: result.dryRun,
-                    action: r.item.action.rawValue,
-                    target: r.item.target,
-                    sizeBytes: r.item.sizeBytes,
-                    outcome: r.outcome.rawValue,
-                    trashedTo: r.trashedTo
-                )
-                if let data = try? encoder.encode(entry) {
-                    lines.append(data)
-                }
-            }
-            guard !lines.isEmpty else { return }
-            let blob = lines.map { String(data: $0, encoding: .utf8) ?? "" }
-                .joined(separator: "\n") + "\n"
+            let entry = LogEntry(
+                date: date,
+                source: source,
+                dryRun: dryRun,
+                action: r.item.action.rawValue,
+                target: r.item.target,
+                sizeBytes: r.item.sizeBytes,
+                outcome: r.outcome.rawValue,
+                trashedTo: r.trashedTo
+            )
+            guard let data = try? encoder.encode(entry) else { return }
+            var line = data
+            line.append(0x0A) // newline
             if let handle = try? FileHandle(forWritingTo: self.fileURL) {
-                handle.seekToEndOfFile()
-                handle.write(blob.data(using: .utf8)!)
-                try? handle.close()
+                defer { try? handle.close() }
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: line)
             } else {
-                try? blob.data(using: .utf8)?.write(to: self.fileURL)
+                try? line.write(to: self.fileURL)
             }
         }
     }
@@ -112,13 +112,28 @@ extension OperationLog {
     }
 
     /// Pure aggregation — separated for testability.
-    static func aggregate(_ entries: [LogEntry], now: Date = Date()) -> FreedStats {
+    /// Real removals with each byte counted once. Emptying the Trash in
+    /// Marmot permanently deletes items Marmot itself trashed earlier; those
+    /// bytes were already counted when they went to the Trash.
+    static func countedRemovals(_ entries: [LogEntry]) -> [LogEntry] {
         let removals = entries.filter {
             !$0.dryRun
                 && $0.outcome == ItemOutcome.done.rawValue
                 && ($0.action == ChangeAction.moveToTrash.rawValue
                     || $0.action == ChangeAction.deletePermanently.rawValue)
         }
+        let trashedLocations = Set(removals.compactMap { entry -> String? in
+            guard entry.action == ChangeAction.moveToTrash.rawValue, let to = entry.trashedTo else { return nil }
+            return SafetyRules.pathKey(SafetyRules.normalize(to))
+        })
+        return removals.filter {
+            $0.action != ChangeAction.deletePermanently.rawValue
+                || !trashedLocations.contains(SafetyRules.pathKey(SafetyRules.normalize($0.target)))
+        }
+    }
+
+    static func aggregate(_ entries: [LogEntry], now: Date = Date()) -> FreedStats {
+        let removals = countedRemovals(entries)
         var stats = FreedStats()
         let week = now.addingTimeInterval(-7 * 86400)
         let month = now.addingTimeInterval(-30 * 86400)

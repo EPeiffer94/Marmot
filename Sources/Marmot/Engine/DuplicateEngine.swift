@@ -36,6 +36,8 @@ final class DuplicateEngine {
     enum ScanPhase {
         case collecting(files: Int)
         case comparing(done: Int, total: Int)
+        /// Full-content check of large files that matched on samples.
+        case verifying(done: Int, total: Int)
     }
 
     var isCancelled = false
@@ -100,12 +102,82 @@ final class DuplicateEngine {
         for entry in keyed {
             if let entry { byKey[entry.key, default: []].append(entry.file) }
         }
-        var groups: [DuplicateGroup] = []
-        for files in byKey.values where files.count > 1 {
-            groups.append(DuplicateGroup(sizeBytes: files[0].sizeBytes,
-                                         files: files.sorted { $0.modified > $1.modified }))
+
+        // Large files were matched on head/middle/tail samples only, and
+        // different files can share those (VM disks, databases). Confirm
+        // them with a full-content hash before showing them, so every group
+        // and every "wasted" total is real. Small files were hashed in full.
+        var confirmed: [[DuplicateFile]] = []
+        var toVerify: [(groupKey: String, file: DuplicateFile)] = []
+        for (key, files) in byKey where files.count > 1 {
+            if files[0].sizeBytes <= Self.fullHashLimit {
+                confirmed.append(files)
+            } else {
+                toVerify.append(contentsOf: files.map { (groupKey: key, file: $0) })
+            }
+        }
+        if !toVerify.isEmpty {
+            onPhase?(.verifying(done: 0, total: toVerify.count))
+            let verified = LockedCounter()
+            let fullKeys: [String?] = parallelMap(count: toVerify.count) { index in
+                let entry = toVerify[index]
+                self.onProgress?(entry.file.path)
+                defer {
+                    let done = verified.increment()
+                    if done % 4 == 0 || done == toVerify.count {
+                        self.onPhase?(.verifying(done: done, total: toVerify.count))
+                    }
+                }
+                return Self.fullContentHash(path: entry.file.path).map { entry.groupKey + ":" + $0 }
+            }
+            if isCancelled { return [] }
+            var byFullKey: [String: [DuplicateFile]] = [:]
+            for (index, key) in fullKeys.enumerated() {
+                if let key { byFullKey[key, default: []].append(toVerify[index].file) }
+            }
+            confirmed += byFullKey.values.filter { $0.count > 1 }
+        }
+
+        let groups = confirmed.map {
+            DuplicateGroup(sizeBytes: $0[0].sizeBytes, files: $0.sorted { $0.modified > $1.modified })
         }
         return groups.sorted { $0.wastedBytes > $1.wastedBytes }
+    }
+
+    /// Files up to this size are hashed in full during the first pass.
+    static let fullHashLimit = Int64(4 * 1024 * 1024)
+
+    /// Runs `body` for indices 0..<count on a small disk-friendly worker
+    /// pool (see the hashing comment above); stops early when cancelled.
+    private func parallelMap<T>(count: Int, _ body: (Int) -> T?) -> [T?] {
+        let next = LockedCounter()
+        let workers = max(2, min(6, ProcessInfo.processInfo.activeProcessorCount))
+        var out = [T?](repeating: nil, count: count)
+        out.withUnsafeMutableBufferPointer { buffer in
+            DispatchQueue.concurrentPerform(iterations: workers) { _ in
+                while !self.isCancelled {
+                    let index = next.increment() - 1
+                    guard index < count else { return }
+                    buffer[index] = body(index)
+                }
+            }
+        }
+        return out
+    }
+
+    /// SHA-256 of the entire file, streamed in 1 MB chunks.
+    static func fullContentHash(path: String) -> String? {
+        guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        do {
+            while let data = try handle.read(upToCount: 1024 * 1024), !data.isEmpty {
+                hasher.update(data: data)
+            }
+        } catch {
+            return nil
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     /// One walk per root: stat data (size, device, inode) comes free, and
@@ -208,7 +280,7 @@ final class DuplicateEngine {
             }
         }
 
-        if size <= Int64(4 * chunkSize) {
+        if size <= fullHashLimit {
             var offset: UInt64 = 0
             while true {
                 guard let data = readChunk(at: offset), !data.isEmpty else { break }

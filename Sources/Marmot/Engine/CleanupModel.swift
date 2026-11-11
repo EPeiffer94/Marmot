@@ -13,7 +13,9 @@ final class CleanupModel: ObservableObject {
     @Published private(set) var lastScan: Date?
 
     var scannedOnce: Bool { lastScan != nil }
-    var totalFound: Int64 { categories.reduce(0) { $0 + $1.size } }
+    /// Categories overlap (e.g. Chrome's cache sits inside the Google
+    /// folder User App Caches lists), so the total counts each byte once.
+    var totalFound: Int64 { TargetOverlap.uniqueSize(of: categories.flatMap(\.items)) }
     var nonEmptyCategoryIDs: Set<String> {
         Set(categories.filter { !$0.items.isEmpty }.map(\.id))
     }

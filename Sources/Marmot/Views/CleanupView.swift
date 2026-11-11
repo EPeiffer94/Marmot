@@ -24,7 +24,7 @@ struct CleanupView: View {
             PlanPreviewView(plan: plan, allowPurgeRoots: true) { result in
                 activePlan = nil
                 if let r = result, !r.dryRun {
-                    lastResultSummary = "Freed \(ByteFormat.string(r.freedBytes))"
+                    lastResultSummary = r.removalSummary
                     model.rescan()
                 }
             }
@@ -44,7 +44,7 @@ struct CleanupView: View {
 
     private var subtitle: String {
         guard model.scannedOnce else { return "" }
-        var text = "Found \(ByteFormat.string(model.totalFound)) of removable data"
+        var text = "Found about \(ByteFormat.string(model.totalFound)) of removable data"
         if let date = model.lastScan, !model.scanning {
             text += " — scanned \(date.formatted(.relative(presentation: .named)))"
         }

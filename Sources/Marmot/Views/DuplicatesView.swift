@@ -65,6 +65,10 @@ struct DuplicatesView: View {
             ScanningStateView(title: "Comparing \(done) of \(total) candidates…",
                               progress: (done: done, total: total),
                               path: model.progressPath) { model.cancel() }
+        case .verifying(let done, let total):
+            ScanningStateView(title: "Confirming \(done) of \(total) large files byte for byte…",
+                              progress: (done: done, total: total),
+                              path: model.progressPath) { model.cancel() }
         case .collecting(let files):
             ScanningStateView(title: "Cataloguing files… \(files) candidates so far",
                               path: model.progressPath) { model.cancel() }

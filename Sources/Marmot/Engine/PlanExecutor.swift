@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// Executes a ChangePlan. In dry-run mode nothing is touched; every item is
 /// reported as "would remove"/"would run". In real mode files go to the Trash
@@ -12,36 +13,65 @@ final class PlanExecutor {
                         allowUserFiles: Bool = false,
                         extraRoots: [String] = [],
                         progress: ((Double, String) -> Void)? = nil) async -> ExecutionResult {
-        let items = plan.selectedItems
+        // Parents before children, so a nested target is recognised as
+        // already handled instead of failing with "No longer exists".
+        let items = TargetOverlap.executionOrder(plan.selectedItems)
+        var handled = Set<String>() // file targets removed (or that would be) this run
         var results: [ItemResult] = []
         results.reserveCapacity(items.count)
+        // Every result is logged the moment it exists (write-ahead), not
+        // once at the end, so a crash mid-plan never loses an Undo record.
+        func add(_ result: ItemResult) {
+            results.append(result)
+            OperationLog.shared.append(result, source: plan.source, dryRun: dryRun)
+        }
 
         // Set when a prerequisite step (quit the app, Time Capsule archive)
         // fails: everything after it is skipped, so nothing is removed that
         // the user expected to be closed or backed up first.
         var failedPrerequisite: String?
 
+        // A plan that came with a prerequisite step must run it. If one was
+        // switched off (the preview locks them, but a plan can be built
+        // anywhere), nothing after it may run.
+        if let missing = plan.items.first(where: {
+            PlanGroup.prerequisites.contains($0.group) && !$0.isSelected
+        }) {
+            add(ItemResult(item: missing, outcome: .failed,
+                           detail: "This required step was turned off, so nothing else was run."))
+            failedPrerequisite = missing.group
+        }
+
         for (index, item) in items.enumerated() {
             progress?(Double(index) / Double(max(items.count, 1)), item.displayName)
             if let group = failedPrerequisite {
-                results.append(ItemResult(item: item, outcome: .skippedAfterFailure,
-                                          detail: "Not run because a \"\(group)\" step failed."))
+                add(ItemResult(item: item, outcome: .skippedAfterFailure,
+                               detail: "Not run because a \"\(group)\" step failed."))
                 continue
+            }
+            if TargetOverlap.isFileAction(item) {
+                let key = TargetOverlap.key(item)
+                if handled.contains(key) || TargetOverlap.hasAncestor(key, in: handled) {
+                    add(ItemResult(item: item, outcome: .coveredByParent,
+                                   detail: "Already included in a folder handled earlier in this plan."))
+                    continue
+                }
             }
             let result = await executeItem(item, dryRun: dryRun,
                                            allowPurgeRoots: allowPurgeRoots,
                                            allowUserFiles: allowUserFiles,
                                            extraRoots: extraRoots)
-            results.append(result)
+            add(result)
+            if TargetOverlap.isFileAction(item), result.outcome == .done || result.outcome == .wouldRemove {
+                handled.insert(TargetOverlap.key(item))
+            }
             if !dryRun, result.outcome == .failed, PlanGroup.prerequisites.contains(item.group) {
                 failedPrerequisite = item.group
             }
         }
         progress?(1.0, "Finished")
 
-        let execution = ExecutionResult(planTitle: plan.title, dryRun: dryRun, results: results)
-        OperationLog.shared.record(execution, source: plan.source)
-        return execution
+        return ExecutionResult(planTitle: plan.title, dryRun: dryRun, results: results)
     }
 
     private static func executeItem(_ item: ChangeItem,
@@ -56,8 +86,43 @@ final class PlanExecutor {
                               allowUserFiles: allowUserFiles,
                               extraRoots: extraRoots)
         case .runCommand, .runAdminCommand:
-            return runCommand(item, dryRun: dryRun)
+            let result = runCommand(item, dryRun: dryRun)
+            guard !dryRun, result.outcome == .done else { return result }
+            if let bundleID = item.waitForExitOf, !(await waitForExit(bundleID: bundleID)) {
+                return ItemResult(item: item, outcome: .failed,
+                                  detail: "The app is still open (it may be asking to save changes). "
+                                        + "Quit it yourself, then run the plan again.")
+            }
+            if let archive = item.verifyArchive, let problem = archiveProblem(archive) {
+                return ItemResult(item: item, outcome: .failed, detail: problem)
+            }
+            return result
         }
+    }
+
+    /// Waits up to `timeout` seconds for every process with this bundle ID
+    /// to exit. A successful quit request only means the app was asked.
+    static func waitForExit(bundleID: String, timeout: TimeInterval = 15) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+        return NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
+    }
+
+    /// Nil when the archive exists, is non-empty, and passes `unzip -t`;
+    /// otherwise a message saying why it can't be trusted as a backup.
+    static func archiveProblem(_ path: String) -> String? {
+        let size = (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int64 ?? 0
+        guard size > 0 else { return "The Time Capsule archive wasn't created, so nothing was removed." }
+        let test = Shell.run("/usr/bin/unzip", ["-tq", path], timeout: 1800)
+        guard test.succeeded else {
+            return "The Time Capsule archive failed its integrity check, so nothing was removed."
+        }
+        return nil
     }
 
     private static func removeFile(_ item: ChangeItem,
@@ -69,6 +134,10 @@ final class PlanExecutor {
 
         if SafetyRules.isWhitelisted(path) {
             return ItemResult(item: item, outcome: .skippedWhitelisted)
+        }
+        if let inner = SafetyRules.whitelistedDescendant(of: path) {
+            return ItemResult(item: item, outcome: .skippedWhitelisted,
+                              detail: "Contains a protected path (\(inner)), so the whole folder was left in place.")
         }
         guard SafetyRules.isSafeToRemove(path, allowPurgeRoots: allowPurgeRoots,
                                          allowUserFiles: allowUserFiles,
@@ -128,7 +197,16 @@ final class PlanExecutor {
             // it shows the standard admin prompt and the item stays in Trash.
             let finder = trashViaFinder(path)
             if finder.succeeded {
-                return ItemResult(item: item, outcome: .done, detail: "Moved to Trash via Finder.")
+                // Finder answers with the item's new home in the Trash; keep
+                // it so this item can be restored like any other.
+                let landed = finder.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                let trashedTo = landed.hasPrefix("/") && FileManager.default.fileExists(atPath: landed)
+                    ? SafetyRules.normalize(landed) : nil
+                return ItemResult(item: item, outcome: .done,
+                                  detail: trashedTo == nil
+                                    ? "Moved to Trash via Finder. Restore it from the Trash in Finder."
+                                    : "Moved to Trash via Finder.",
+                                  trashedTo: trashedTo)
             }
             let hint = finder.stderr.contains("-1743")
                 ? " Allow Marmot to control Finder in System Settings → Privacy & Security → Automation, then retry."
@@ -168,8 +246,14 @@ final class PlanExecutor {
         let escaped = path
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
-        let script = "tell application \"Finder\" to delete (POSIX file \"\(escaped)\" as alias)"
-        return Shell.run("/usr/bin/osascript", ["-e", script], timeout: 120)
+        // `delete` returns a reference to the item in the Trash; print its
+        // POSIX path so the caller can record where it went.
+        return Shell.run("/usr/bin/osascript", [
+            "-e", "tell application \"Finder\"",
+            "-e", "set trashedItem to delete (POSIX file \"\(escaped)\" as alias)",
+            "-e", "return POSIX path of (trashedItem as alias)",
+            "-e", "end tell"
+        ], timeout: 120)
     }
 
     private static func runCommand(_ item: ChangeItem, dryRun: Bool) -> ItemResult {
@@ -180,7 +264,8 @@ final class PlanExecutor {
         if item.action == .runAdminCommand {
             output = Shell.runAdmin(item.target)
         } else {
-            output = Shell.runLine(item.target)
+            // Archiving a large app can take far longer than a normal command.
+            output = Shell.runLine(item.target, timeout: item.verifyArchive != nil ? 3600 : 120)
         }
         if output.succeeded {
             return ItemResult(item: item, outcome: .done,
