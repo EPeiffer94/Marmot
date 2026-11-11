@@ -16,6 +16,12 @@ final class PlanExecutor {
         let items = plan.selectedItems
         var results: [ItemResult] = []
         results.reserveCapacity(items.count)
+        // Every result is logged the moment it exists (write-ahead), not
+        // once at the end, so a crash mid-plan never loses an Undo record.
+        func add(_ result: ItemResult) {
+            results.append(result)
+            OperationLog.shared.append(result, source: plan.source, dryRun: dryRun)
+        }
 
         // Set when a prerequisite step (quit the app, Time Capsule archive)
         // fails: everything after it is skipped, so nothing is removed that
@@ -28,32 +34,30 @@ final class PlanExecutor {
         if let missing = plan.items.first(where: {
             PlanGroup.prerequisites.contains($0.group) && !$0.isSelected
         }) {
-            results.append(ItemResult(item: missing, outcome: .failed,
-                                      detail: "This required step was turned off, so nothing else was run."))
+            add(ItemResult(item: missing, outcome: .failed,
+                           detail: "This required step was turned off, so nothing else was run."))
             failedPrerequisite = missing.group
         }
 
         for (index, item) in items.enumerated() {
             progress?(Double(index) / Double(max(items.count, 1)), item.displayName)
             if let group = failedPrerequisite {
-                results.append(ItemResult(item: item, outcome: .skippedAfterFailure,
-                                          detail: "Not run because a \"\(group)\" step failed."))
+                add(ItemResult(item: item, outcome: .skippedAfterFailure,
+                               detail: "Not run because a \"\(group)\" step failed."))
                 continue
             }
             let result = await executeItem(item, dryRun: dryRun,
                                            allowPurgeRoots: allowPurgeRoots,
                                            allowUserFiles: allowUserFiles,
                                            extraRoots: extraRoots)
-            results.append(result)
+            add(result)
             if !dryRun, result.outcome == .failed, PlanGroup.prerequisites.contains(item.group) {
                 failedPrerequisite = item.group
             }
         }
         progress?(1.0, "Finished")
 
-        let execution = ExecutionResult(planTitle: plan.title, dryRun: dryRun, results: results)
-        OperationLog.shared.record(execution, source: plan.source)
-        return execution
+        return ExecutionResult(planTitle: plan.title, dryRun: dryRun, results: results)
     }
 
     private static func executeItem(_ item: ChangeItem,
@@ -179,7 +183,16 @@ final class PlanExecutor {
             // it shows the standard admin prompt and the item stays in Trash.
             let finder = trashViaFinder(path)
             if finder.succeeded {
-                return ItemResult(item: item, outcome: .done, detail: "Moved to Trash via Finder.")
+                // Finder answers with the item's new home in the Trash; keep
+                // it so this item can be restored like any other.
+                let landed = finder.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                let trashedTo = landed.hasPrefix("/") && FileManager.default.fileExists(atPath: landed)
+                    ? SafetyRules.normalize(landed) : nil
+                return ItemResult(item: item, outcome: .done,
+                                  detail: trashedTo == nil
+                                    ? "Moved to Trash via Finder. Restore it from the Trash in Finder."
+                                    : "Moved to Trash via Finder.",
+                                  trashedTo: trashedTo)
             }
             let hint = finder.stderr.contains("-1743")
                 ? " Allow Marmot to control Finder in System Settings → Privacy & Security → Automation, then retry."
@@ -219,8 +232,14 @@ final class PlanExecutor {
         let escaped = path
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
-        let script = "tell application \"Finder\" to delete (POSIX file \"\(escaped)\" as alias)"
-        return Shell.run("/usr/bin/osascript", ["-e", script], timeout: 120)
+        // `delete` returns a reference to the item in the Trash; print its
+        // POSIX path so the caller can record where it went.
+        return Shell.run("/usr/bin/osascript", [
+            "-e", "tell application \"Finder\"",
+            "-e", "set trashedItem to delete (POSIX file \"\(escaped)\" as alias)",
+            "-e", "return POSIX path of (trashedItem as alias)",
+            "-e", "end tell"
+        ], timeout: 120)
     }
 
     private static func runCommand(_ item: ChangeItem, dryRun: Bool) -> ItemResult {

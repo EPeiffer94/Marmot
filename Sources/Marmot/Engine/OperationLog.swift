@@ -32,36 +32,34 @@ final class OperationLog {
     private static let maxLogBytes = 2_000_000
     private static let keepEntries = 4000
 
-    func record(_ result: ExecutionResult, source: String) {
-        queue.async {
+    /// Write-ahead: records ONE finished item, synchronously, before the
+    /// executor moves on. If Marmot crashes or is quit mid-plan, History
+    /// still lists every item already moved, with where it went in the
+    /// Trash, so each one can be restored.
+    func append(_ r: ItemResult, source: String, dryRun: Bool, date: Date = Date()) {
+        queue.sync {
             self.rotateIfNeeded()
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
-            var lines: [Data] = []
-            for r in result.results {
-                let entry = LogEntry(
-                    date: result.finishedAt,
-                    source: source,
-                    dryRun: result.dryRun,
-                    action: r.item.action.rawValue,
-                    target: r.item.target,
-                    sizeBytes: r.item.sizeBytes,
-                    outcome: r.outcome.rawValue,
-                    trashedTo: r.trashedTo
-                )
-                if let data = try? encoder.encode(entry) {
-                    lines.append(data)
-                }
-            }
-            guard !lines.isEmpty else { return }
-            let blob = lines.map { String(data: $0, encoding: .utf8) ?? "" }
-                .joined(separator: "\n") + "\n"
+            let entry = LogEntry(
+                date: date,
+                source: source,
+                dryRun: dryRun,
+                action: r.item.action.rawValue,
+                target: r.item.target,
+                sizeBytes: r.item.sizeBytes,
+                outcome: r.outcome.rawValue,
+                trashedTo: r.trashedTo
+            )
+            guard let data = try? encoder.encode(entry) else { return }
+            var line = data
+            line.append(0x0A) // newline
             if let handle = try? FileHandle(forWritingTo: self.fileURL) {
-                handle.seekToEndOfFile()
-                handle.write(blob.data(using: .utf8)!)
-                try? handle.close()
+                defer { try? handle.close() }
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: line)
             } else {
-                try? blob.data(using: .utf8)?.write(to: self.fileURL)
+                try? line.write(to: self.fileURL)
             }
         }
     }

@@ -411,6 +411,13 @@ struct ResultsView: View {
                             .lineLimit(1).truncationMode(.middle)
                         HStack(spacing: 6) {
                             Text(r.outcome.rawValue).font(.caption).foregroundStyle(.secondary)
+                            if r.outcome == .done && r.item.action == .moveToTrash {
+                                // Say up front which items Undo/History can bring back.
+                                Label(r.trashedTo != nil ? "Undo available" : "No Undo",
+                                      systemImage: r.trashedTo != nil ? "arrow.uturn.backward" : "nosign")
+                                    .font(.caption2)
+                                    .foregroundStyle(r.trashedTo != nil ? Color.blue : Color.orange)
+                            }
                             if !r.detail.isEmpty {
                                 Text("— " + r.detail)
                                     .font(.caption)
