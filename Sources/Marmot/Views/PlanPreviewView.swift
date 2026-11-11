@@ -167,9 +167,7 @@ struct PlanPreviewView: View {
             // Quitting the app and the Time Capsule backup are what make the
             // rest of the plan safe, so they can't be switched off here.
             .disabled(PlanGroup.prerequisites.contains(item.group))
-            .help(PlanGroup.prerequisites.contains(item.group)
-                  ? "Required: the rest of the plan only runs after this step succeeds."
-                  : "")
+            .help(requiredTip(for: item))
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
@@ -233,6 +231,12 @@ struct PlanPreviewView: View {
                 }
             }
         }
+    }
+
+    private func requiredTip(for item: ChangeItem) -> String {
+        PlanGroup.prerequisites.contains(item.group)
+            ? "Required: the rest of the plan only runs after this step succeeds."
+            : ""
     }
 
     /// Protected-path conflicts are shown before applying, not discovered

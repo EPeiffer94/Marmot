@@ -113,7 +113,7 @@ final class DuplicateEngine {
             if files[0].sizeBytes <= Self.fullHashLimit {
                 confirmed.append(files)
             } else {
-                toVerify.append(contentsOf: files.map { (key, $0) })
+                toVerify.append(contentsOf: files.map { (groupKey: key, file: $0) })
             }
         }
         if !toVerify.isEmpty {

@@ -234,7 +234,7 @@ enum TargetOverlap {
                 let da = depth(a.item), db = depth(b.item)
                 return da != db ? da < db : a.order < b.order
             }
-            .map(\.item)
+            .map { $0.item }
         var result = items
         for (slot, item) in zip(fileSlots, sortedFiles) { result[slot] = item }
         return result

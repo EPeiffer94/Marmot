@@ -19,7 +19,9 @@ final class OperationLog {
     static let shared = OperationLog()
 
     private let queue = DispatchQueue(label: "marmot.oplog")
-    private let fileURL: URL
+    /// Internal (not private) so tests can point the log at a scratch file
+    /// instead of the user's real History.
+    var fileURL: URL
 
     private init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
