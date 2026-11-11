@@ -123,7 +123,8 @@ enum UninstallEngine {
             target: "osascript -e " + Shell.quoted("tell application id \(Shell.appleScriptString(app.bundleID)) to quit"),
             action: .runCommand,
             note: "Quits \(app.name) first so its files aren't in use.",
-            group: PlanGroup.beforeStarting)
+            group: PlanGroup.beforeStarting,
+            waitForExitOf: app.bundleID)
     }
 
     /// Remnants for an app that may or may not still be installed.

@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// Executes a ChangePlan. In dry-run mode nothing is touched; every item is
 /// reported as "would remove"/"would run". In real mode files go to the Trash
@@ -20,6 +21,17 @@ final class PlanExecutor {
         // fails: everything after it is skipped, so nothing is removed that
         // the user expected to be closed or backed up first.
         var failedPrerequisite: String?
+
+        // A plan that came with a prerequisite step must run it. If one was
+        // switched off (the preview locks them, but a plan can be built
+        // anywhere), nothing after it may run.
+        if let missing = plan.items.first(where: {
+            PlanGroup.prerequisites.contains($0.group) && !$0.isSelected
+        }) {
+            results.append(ItemResult(item: missing, outcome: .failed,
+                                      detail: "This required step was turned off, so nothing else was run."))
+            failedPrerequisite = missing.group
+        }
 
         for (index, item) in items.enumerated() {
             progress?(Double(index) / Double(max(items.count, 1)), item.displayName)
@@ -56,8 +68,43 @@ final class PlanExecutor {
                               allowUserFiles: allowUserFiles,
                               extraRoots: extraRoots)
         case .runCommand, .runAdminCommand:
-            return runCommand(item, dryRun: dryRun)
+            let result = runCommand(item, dryRun: dryRun)
+            guard !dryRun, result.outcome == .done else { return result }
+            if let bundleID = item.waitForExitOf, !(await waitForExit(bundleID: bundleID)) {
+                return ItemResult(item: item, outcome: .failed,
+                                  detail: "The app is still open (it may be asking to save changes). "
+                                        + "Quit it yourself, then run the plan again.")
+            }
+            if let archive = item.verifyArchive, let problem = archiveProblem(archive) {
+                return ItemResult(item: item, outcome: .failed, detail: problem)
+            }
+            return result
         }
+    }
+
+    /// Waits up to `timeout` seconds for every process with this bundle ID
+    /// to exit. A successful quit request only means the app was asked.
+    static func waitForExit(bundleID: String, timeout: TimeInterval = 15) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+        return NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
+    }
+
+    /// Nil when the archive exists, is non-empty, and passes `unzip -t`;
+    /// otherwise a message saying why it can't be trusted as a backup.
+    static func archiveProblem(_ path: String) -> String? {
+        let size = (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int64 ?? 0
+        guard size > 0 else { return "The Time Capsule archive wasn't created, so nothing was removed." }
+        let test = Shell.run("/usr/bin/unzip", ["-tq", path], timeout: 1800)
+        guard test.succeeded else {
+            return "The Time Capsule archive failed its integrity check, so nothing was removed."
+        }
+        return nil
     }
 
     private static func removeFile(_ item: ChangeItem,
@@ -69,6 +116,10 @@ final class PlanExecutor {
 
         if SafetyRules.isWhitelisted(path) {
             return ItemResult(item: item, outcome: .skippedWhitelisted)
+        }
+        if let inner = SafetyRules.whitelistedDescendant(of: path) {
+            return ItemResult(item: item, outcome: .skippedWhitelisted,
+                              detail: "Contains a protected path (\(inner)), so the whole folder was left in place.")
         }
         guard SafetyRules.isSafeToRemove(path, allowPurgeRoots: allowPurgeRoots,
                                          allowUserFiles: allowUserFiles,
@@ -180,7 +231,8 @@ final class PlanExecutor {
         if item.action == .runAdminCommand {
             output = Shell.runAdmin(item.target)
         } else {
-            output = Shell.runLine(item.target)
+            // Archiving a large app can take far longer than a normal command.
+            output = Shell.runLine(item.target, timeout: item.verifyArchive != nil ? 3600 : 120)
         }
         if output.succeeded {
             return ItemResult(item: item, outcome: .done,

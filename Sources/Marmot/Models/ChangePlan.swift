@@ -44,6 +44,13 @@ struct ChangeItem: Identifiable, Codable, Hashable, Sendable {
     /// checks it still exists and is byte-for-byte identical; otherwise this
     /// item is left untouched.
     var verifyIdenticalTo: String? = nil
+    /// Quit steps only: the bundle ID that must actually stop running. A
+    /// quit request can succeed while the app stays open (a "Save changes?"
+    /// sheet), so the executor waits for the process to exit.
+    var waitForExitOf: String? = nil
+    /// Archive steps only: the zip the command writes. The executor tests
+    /// it after the command, so "succeeded" means "restorable".
+    var verifyArchive: String? = nil
 
     var displayName: String {
         if action == .runCommand || action == .runAdminCommand { return target }

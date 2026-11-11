@@ -164,6 +164,12 @@ struct PlanPreviewView: View {
             ))
             .toggleStyle(.checkbox)
             .labelsHidden()
+            // Quitting the app and the Time Capsule backup are what make the
+            // rest of the plan safe, so they can't be switched off here.
+            .disabled(PlanGroup.prerequisites.contains(item.group))
+            .help(PlanGroup.prerequisites.contains(item.group)
+                  ? "Required: the rest of the plan only runs after this step succeeds."
+                  : "")
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
@@ -183,6 +189,12 @@ struct PlanPreviewView: View {
                     Text(item.note)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if let warning = protectionWarning(for: item) {
+                    Label(warning, systemImage: "lock.shield")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
                         .lineLimit(2)
                 }
                 Text(item.target)
@@ -221,6 +233,19 @@ struct PlanPreviewView: View {
                 }
             }
         }
+    }
+
+    /// Protected-path conflicts are shown before applying, not discovered
+    /// after: the executor will skip these items whatever their checkbox says.
+    private func protectionWarning(for item: ChangeItem) -> String? {
+        guard item.action == .moveToTrash || item.action == .deletePermanently else { return nil }
+        if SafetyRules.isWhitelisted(item.target) {
+            return "Protected path. It will be skipped."
+        }
+        if let inner = SafetyRules.whitelistedDescendant(of: item.target) {
+            return "Contains a protected path (\((inner as NSString).lastPathComponent)). It will be skipped."
+        }
+        return nil
     }
 
     private func iconName(for item: ChangeItem) -> String {
@@ -327,6 +352,7 @@ struct PlanPreviewView: View {
     private func setAll(_ value: Bool) {
         for i in plan.items.indices {
             if value && plan.items[i].risk == .high { continue }
+            if PlanGroup.prerequisites.contains(plan.items[i].group) { continue }
             plan.items[i].isSelected = value
         }
     }

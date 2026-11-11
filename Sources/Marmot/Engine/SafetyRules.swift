@@ -85,7 +85,15 @@ enum SafetyRules {
 
     static func isWhitelisted(_ path: String) -> Bool {
         let p = normalize(path)
-        return whitelist.contains { p == normalize($0) || p.hasPrefix(normalize($0) + "/") }
+        return whitelist.contains { isSameOrInside(p, normalize($0)) }
+    }
+
+    /// The first whitelisted path that sits strictly *inside* `path`.
+    /// Removing `path` would carry that protected item to the Trash with
+    /// it, so the executor skips the whole folder and names the culprit.
+    static func whitelistedDescendant(of path: String) -> String? {
+        let p = normalize(path)
+        return whitelist.map(normalize).first { isStrictlyInside($0, p) }
     }
 
     /// The core gate. Conservative: on any doubt, refuse.
@@ -108,16 +116,17 @@ enum SafetyRules {
         // only survives if it sits strictly inside an allowed root).
         let components = p.split(separator: "/")
         guard components.count >= 2 else { return false }
-        guard p != home else { return false }
+        guard pathKey(p) != pathKey(home) else { return false }
 
         // Never inside a media library package.
-        let lower = p.lowercased()
+        let lower = pathKey(p)
         if libraryPackageMarkers.contains(where: { lower.contains($0) }) { return false }
 
-        // Never anything under an always-protected prefix.
+        // Never an always-protected area, anything inside one, or a folder
+        // that contains one (e.g. ~/Library/Developer/Xcode holds Archives).
         for prefix in systemProtectedPrefixes {
             let n = normalize(prefix)
-            if p == n || p.hasPrefix(n + "/") { return false }
+            if isSameOrInside(p, n) || isStrictlyInside(n, p) { return false }
         }
         // Folders the user explicitly picked for this plan (e.g. Duplicates
         // scan folders), minus anything too broad or system-owned.
@@ -129,9 +138,8 @@ enum SafetyRules {
         if !allowUserFiles
             && !(allowPurgeRoots && isInsideUserDataPurgeRoot(p))
             && !isInside(p, anyOf: extras) {
-            for prefix in userDataPrefixes {
-                let n = normalize(prefix)
-                if p == n || p.hasPrefix(n + "/") { return false }
+            for prefix in userDataPrefixes where isSameOrInside(p, normalize(prefix)) {
+                return false
             }
         }
 
@@ -140,21 +148,20 @@ enum SafetyRules {
         if allowPurgeRoots { roots += purgeRoots }
         if allowUserFiles { roots += userDataPrefixes }
         roots += extras
-        let inside = roots.contains { root in
-            let r = normalize(root)
-            return p.hasPrefix(r + "/") && p.count > r.count + 1
-        }
-        guard inside else { return false }
+        let matching = roots.map(normalize).filter { isStrictlyInside(p, $0) }
+        guard let root = matching.max(by: { $0.count < $1.count }) else { return false }
+
+        // The string checks above only mean something if the path really
+        // lives where it says. A symlinked folder between the root and the
+        // item would send the removal somewhere else entirely.
+        guard !traversesSymlink(p, below: root) else { return false }
 
         return true
     }
 
     /// True when `p` sits strictly inside one of `roots`.
     static func isInside(_ p: String, anyOf roots: [String]) -> Bool {
-        roots.contains { root in
-            let r = normalize(root)
-            return p.hasPrefix(r + "/") && p.count > r.count + 1
-        }
+        roots.contains { isStrictlyInside(p, normalize($0)) }
     }
 
     /// Project folders the user keeps inside a protected content area, such
@@ -163,7 +170,7 @@ enum SafetyRules {
     /// whole folder.
     static func isInsideUserDataPurgeRoot(_ p: String) -> Bool {
         let unlocked = purgeRoots.map(normalize).filter { root in
-            !root.contains("..") && userDataPrefixes.contains { root.hasPrefix(normalize($0) + "/") }
+            !root.contains("..") && userDataPrefixes.contains { isStrictlyInside(root, normalize($0)) }
         }
         return isInside(p, anyOf: unlocked)
     }
@@ -176,13 +183,51 @@ enum SafetyRules {
         let r = normalize(root)
         guard r.hasPrefix("/"), !r.contains(".."), !r.contains("\0"),
               r.split(separator: "/").count >= 2,
-              r != home else { return false }
+              pathKey(r) != pathKey(home) else { return false }
         let tooBroad = [home + "/Library", "/Library", "/Applications", "/private", "/Users/Shared"]
-        for prefix in tooBroad + systemProtectedPrefixes {
-            let n = normalize(prefix)
-            if r == n || r.hasPrefix(n + "/") { return false }
+        for prefix in tooBroad + systemProtectedPrefixes where isSameOrInside(r, normalize(prefix)) {
+            return false
         }
         return true
+    }
+
+    // MARK: - Path comparison
+
+    /// Comparison key. APFS is case- and normalization-insensitive by
+    /// default, so ".../documents" and ".../Documents" are the same folder
+    /// and must be treated the same by every rule.
+    static func pathKey(_ path: String) -> String {
+        path.precomposedStringWithCanonicalMapping.lowercased()
+    }
+
+    /// `p` equals `root` or sits inside it. Both must be normalized.
+    static func isSameOrInside(_ p: String, _ root: String) -> Bool {
+        let a = pathKey(p), r = pathKey(root)
+        return a == r || a.hasPrefix(r + "/")
+    }
+
+    /// `p` sits strictly inside `root`. Both must be normalized.
+    static func isStrictlyInside(_ p: String, _ root: String) -> Bool {
+        let a = pathKey(p), r = pathKey(root)
+        return a.hasPrefix(r + "/") && a.count > r.count + 1
+    }
+
+    /// True when a folder *between* `root` and the item is a symbolic link.
+    /// The item itself may be a link (trashing a link removes only the
+    /// link), and the root is trusted. A component that doesn't exist ends
+    /// the check: there is nothing on disk to follow.
+    static func traversesSymlink(_ p: String, below root: String) -> Bool {
+        let parts = p.split(separator: "/").map(String.init)
+        let rootDepth = root.split(separator: "/").count
+        guard parts.count > rootDepth + 1 else { return false }
+        var current = "/" + parts[0..<rootDepth].joined(separator: "/")
+        for part in parts[rootDepth..<(parts.count - 1)] {
+            current += "/" + part
+            var st = stat()
+            guard lstat(current, &st) == 0 else { return false }
+            if (st.st_mode & S_IFMT) == S_IFLNK { return true }
+        }
+        return false
     }
 
     static func normalize(_ path: String) -> String {
