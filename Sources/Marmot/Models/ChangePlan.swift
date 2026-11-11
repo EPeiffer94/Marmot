@@ -78,8 +78,9 @@ struct ChangePlan: Identifiable, Sendable {
     }
 
     var selectedItems: [ChangeItem] { items.filter { $0.isSelected } }
-    var selectedSize: Int64 { selectedItems.reduce(0) { $0 + $1.sizeBytes } }
-    var totalSize: Int64 { items.reduce(0) { $0 + $1.sizeBytes } }
+    /// Nested and repeated targets are counted once (see TargetOverlap).
+    var selectedSize: Int64 { TargetOverlap.uniqueSize(of: selectedItems) }
+    var totalSize: Int64 { TargetOverlap.uniqueSize(of: items) }
     var groups: [String] {
         var seen = Set<String>()
         return items.compactMap { seen.insert($0.group).inserted ? $0.group : nil }
@@ -120,6 +121,7 @@ enum ItemOutcome: String, Codable {
     case skippedUnsafe = "Skipped (safety rule)"
     case skippedWhitelisted = "Skipped (whitelisted)"
     case skippedAfterFailure = "Skipped (earlier step failed)"
+    case coveredByParent = "Included in its parent folder"
     case failed = "Failed"
 }
 
@@ -154,6 +156,74 @@ struct ExecutionResult: Sendable {
         results.filter { $0.outcome == .wouldRemove }.reduce(0) { $0 + $1.item.sizeBytes }
     }
     var failures: [ItemResult] { results.filter { $0.outcome == .failed } }
+}
+
+// MARK: - Overlapping targets
+
+/// Cleanup categories overlap: User App Caches lists ~/Library/Caches/Google
+/// while Browser Caches lists .../Google/Chrome inside it, and Orphaned App
+/// Data repeats some Caches folders exactly. These helpers make sure the
+/// same bytes are counted once and removed once.
+enum TargetOverlap {
+
+    static func isFileAction(_ item: ChangeItem) -> Bool {
+        item.action == .moveToTrash || item.action == .deletePermanently
+    }
+
+    /// Comparison key for a file target (normalized, case-insensitive).
+    static func key(_ item: ChangeItem) -> String {
+        SafetyRules.pathKey(SafetyRules.normalize(item.target))
+    }
+
+    /// True when a proper ancestor folder of `key` is in `keys`.
+    static func hasAncestor(_ key: String, in keys: Set<String>) -> Bool {
+        var current = key
+        while let slash = current.lastIndex(of: "/"), slash > current.startIndex {
+            current = String(current[..<slash])
+            if keys.contains(current) { return true }
+        }
+        return false
+    }
+
+    /// Total bytes, counting a repeated target once and skipping anything
+    /// inside another listed folder (the folder's size already includes it).
+    static func uniqueSize(of items: [ChangeItem]) -> Int64 {
+        var sizeByKey: [String: Int64] = [:]
+        var other: Int64 = 0
+        for item in items {
+            if isFileAction(item) {
+                let k = key(item)
+                sizeByKey[k] = max(sizeByKey[k] ?? 0, item.sizeBytes)
+            } else {
+                other += item.sizeBytes
+            }
+        }
+        let keys = Set(sizeByKey.keys)
+        return sizeByKey.reduce(other) { total, entry in
+            hasAncestor(entry.key, in: keys) ? total : total + entry.value
+        }
+    }
+
+    /// Execution order: file targets shallowest first (parents before
+    /// children), otherwise in their original order. Non-file steps keep
+    /// their positions, so prerequisite steps still run first.
+    static func executionOrder(_ items: [ChangeItem]) -> [ChangeItem] {
+        let fileSlots = items.indices.filter { isFileAction(items[$0]) }
+        let sortedFiles = fileSlots.enumerated()
+            .map { (order: $0.offset, item: items[$0.element]) }
+            .sorted { a, b in
+                let da = depth(a.item), db = depth(b.item)
+                return da != db ? da < db : a.order < b.order
+            }
+            .map(\.item)
+        var result = items
+        for (slot, item) in zip(fileSlots, sortedFiles) { result[slot] = item }
+        return result
+    }
+
+    static func depth(_ item: ChangeItem) -> Int {
+        key(item).split(separator: "/").count
+    }
 }
 
 // MARK: - Byte formatting

@@ -13,7 +13,10 @@ final class PlanExecutor {
                         allowUserFiles: Bool = false,
                         extraRoots: [String] = [],
                         progress: ((Double, String) -> Void)? = nil) async -> ExecutionResult {
-        let items = plan.selectedItems
+        // Parents before children, so a nested target is recognised as
+        // already handled instead of failing with "No longer exists".
+        let items = TargetOverlap.executionOrder(plan.selectedItems)
+        var handled = Set<String>() // file targets removed (or that would be) this run
         var results: [ItemResult] = []
         results.reserveCapacity(items.count)
         // Every result is logged the moment it exists (write-ahead), not
@@ -46,11 +49,22 @@ final class PlanExecutor {
                                detail: "Not run because a \"\(group)\" step failed."))
                 continue
             }
+            if TargetOverlap.isFileAction(item) {
+                let key = TargetOverlap.key(item)
+                if handled.contains(key) || TargetOverlap.hasAncestor(key, in: handled) {
+                    add(ItemResult(item: item, outcome: .coveredByParent,
+                                   detail: "Already included in a folder handled earlier in this plan."))
+                    continue
+                }
+            }
             let result = await executeItem(item, dryRun: dryRun,
                                            allowPurgeRoots: allowPurgeRoots,
                                            allowUserFiles: allowUserFiles,
                                            extraRoots: extraRoots)
             add(result)
+            if TargetOverlap.isFileAction(item), result.outcome == .done || result.outcome == .wouldRemove {
+                handled.insert(TargetOverlap.key(item))
+            }
             if !dryRun, result.outcome == .failed, PlanGroup.prerequisites.contains(item.group) {
                 failedPrerequisite = item.group
             }

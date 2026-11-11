@@ -60,6 +60,7 @@ extension ItemOutcome {
         case .wouldRemove, .wouldRun: return "eye"
         case .skippedUnsafe, .skippedWhitelisted: return "shield.fill"
         case .skippedAfterFailure: return "forward.end.fill"
+        case .coveredByParent: return "folder.fill"
         case .failed: return "xmark.circle.fill"
         }
     }
@@ -70,6 +71,7 @@ extension ItemOutcome {
         case .wouldRemove, .wouldRun: return .blue
         case .skippedUnsafe, .skippedWhitelisted, .skippedAfterFailure: return .orange
         case .failed: return .red
+        case .coveredByParent: return .secondary
         }
     }
 }
