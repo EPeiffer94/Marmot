@@ -8,7 +8,7 @@ BUNDLE = $(APP_NAME).app
 CONTENTS = $(BUNDLE)/Contents
 RELEASE_ZIP = $(APP_NAME)-$(VERSION).zip
 
-.PHONY: all build bundle run release clean
+.PHONY: all build bundle run release ship clean
 
 all: bundle
 
@@ -49,6 +49,13 @@ release: bundle
 	rm -f $(RELEASE_ZIP)
 	ditto -c -k --keepParent $(BUNDLE) $(RELEASE_ZIP)
 	@echo "Created $(RELEASE_ZIP) — attach it to a GitHub Release."
+
+# One-command release: checks, bump, build, sign, publish, Homebrew.
+#   make ship            (patch)    make ship BUMP=minor    make ship BUMP=4.2.0
+#   make ship DRY=1      (checks + release notes only)
+BUMP ?= patch
+ship:
+	@bash scripts/release.sh $(BUMP) $(if $(DRY),dry,)
 
 clean:
 	rm -rf .build $(BUNDLE)

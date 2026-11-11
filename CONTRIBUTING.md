@@ -62,18 +62,17 @@ Tests/MarmotTests/          Safety-rule truth table + version comparison tests
 
 ## Releases (maintainers)
 
-Run these in order. The cask URL points at the release asset, so update the tap only after the GitHub release is published with the zip attached.
+One command, from the repo folder on the maintainer's Mac:
 
 ```sh
-make release VERSION=x.y.z
-sh scripts/make-appcast-entry.sh Marmot-x.y.z.zip x.y.z   # sign + add appcast entry
-sh scripts/make-cask.sh                                   # refresh the Homebrew cask
-git add -A && git commit -m "Release x.y.z: appcast + cask" && git push
-git tag vx.y.z && git push origin vx.y.z
-# Create the GitHub release for vx.y.z and attach Marmot-x.y.z.zip (exact filename). Then:
-cp packaging/homebrew/marmot.rb ../homebrew-marmot/Casks/marmot.rb
-cd ../homebrew-marmot && git commit -am "marmot x.y.z" && git push
+make ship DRY=1        # run every check and draft the release notes; changes nothing
+make ship              # patch release (e.g. 4.1.0 → 4.1.1)
+make ship BUMP=minor   # or major, or an exact version: make ship BUMP=4.2.0
 ```
+
+Or double-click `scripts/Release Marmot.command` in Finder.
+
+`scripts/release.sh` checks that main is clean and current, CI passed, the tag is unused, `gh` is signed in, and the Homebrew tap (`../homebrew-marmot`) is clean. It then opens the release notes in TextEdit and asks you to type the version to confirm. After that it bumps `VERSION`, builds, signs the appcast entry, updates the cask, and pushes the tag. Next it publishes the GitHub release with the zip, checks that the download matches, and only then pushes main, which publishes the appcast. Last, it updates the tap. If a step fails, it says what was already done and whether users are affected.
 
 The Sparkle signing key lives in the maintainer's Keychain; keep an exported backup somewhere safe. Existing users update through Sparkle either way. The cask only matters for new `brew` installs.
 
