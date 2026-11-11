@@ -7,6 +7,14 @@
     <language>en</language>
     <!-- MARMOT_APPCAST_ITEMS -->
     <item>
+      <title>Marmot 4.1.0</title>
+      <pubDate>Wed, 11 Nov 2026 08:37:58 -0500</pubDate>
+      <sparkle:version>165</sparkle:version>
+      <sparkle:shortVersionString>4.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/Kasakir-AI/Marmot/releases/download/v4.1.0/Marmot-4.1.0.zip" sparkle:edSignature="NSVL9knjS82DOtnVmHN5nAUn5PrVCDymh+rdAsS3ENxkPD4P3w5RBwXezViCxI2CzIIx9sx9fQycGBU61DumCA==" length="2423311" type="application/octet-stream" />
+    </item>
+    <item>
       <title>Marmot 4.0.2</title>
       <pubDate>Tue, 10 Nov 2026 17:02:39 -0500</pubDate>
       <sparkle:version>152</sparkle:version>
