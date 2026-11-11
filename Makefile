@@ -50,12 +50,13 @@ release: bundle
 	ditto -c -k --keepParent $(BUNDLE) $(RELEASE_ZIP)
 	@echo "Created $(RELEASE_ZIP) — attach it to a GitHub Release."
 
-# One-command release: checks, bump, build, sign, publish, Homebrew.
+# One-command release: checks, bump, build, sign, publish, Homebrew, changelog.
 #   make ship            (patch)    make ship BUMP=minor    make ship BUMP=4.2.0
-#   make ship DRY=1      (checks + release notes only)
+#   make ship DRY=1      (checks + draft release notes only)
+#   make ship RESUME=1   (finish a release that stopped partway)
 BUMP ?= patch
 ship:
-	@bash scripts/release.sh $(BUMP) $(if $(DRY),dry,)
+	@bash scripts/release.sh $(BUMP) $(if $(RESUME),resume,$(if $(DRY),dry,))
 
 clean:
 	rm -rf .build $(BUNDLE)

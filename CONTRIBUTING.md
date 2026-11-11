@@ -68,11 +68,27 @@ One command, from the repo folder on the maintainer's Mac:
 make ship DRY=1        # run every check and draft the release notes; changes nothing
 make ship              # patch release (e.g. 4.1.0 → 4.1.1)
 make ship BUMP=minor   # or major, or an exact version: make ship BUMP=4.2.0
+make ship RESUME=1     # finish a release that stopped partway
 ```
 
 Or double-click `scripts/Release Marmot.command` in Finder.
 
-`scripts/release.sh` checks that main is clean and current, CI passed, the tag is unused, `gh` is signed in, and the Homebrew tap (`../homebrew-marmot`) is clean. It then opens the release notes in TextEdit and asks you to type the version to confirm. After that it bumps `VERSION`, builds, signs the appcast entry, updates the cask, and pushes the tag. Next it publishes the GitHub release with the zip, checks that the download matches, and only then pushes main, which publishes the appcast. Last, it updates the tap. If a step fails, it says what was already done and whether users are affected.
+`scripts/release.sh` checks everything before it changes anything:
+- main is clean and current, and CI passed on it.
+- The tag is unused, and `gh` is signed in.
+- Both repos commit with the no-reply email.
+- The Homebrew tap (`../homebrew-marmot`) is clean.
+- The app builds, and the Sparkle signing key works.
+
+Next it drafts release notes from merged pull requests and commits, and opens them in TextEdit. It then asks you to type the version to confirm. After that:
+1. Bumps `VERSION` and builds the zip.
+2. Signs the feed entry, with the notes shown in the in-app update window.
+3. Updates the cask and adds the notes to `CHANGELOG.md`.
+4. Pushes the tag and publishes the GitHub release with the zip.
+5. Checks that the download matches, then pushes main, which publishes the feed.
+6. Updates the tap and confirms the new and old feed addresses and the cask.
+
+If a step fails, it says whether users are affected; `make ship RESUME=1` continues from there.
 
 The Sparkle signing key lives in the maintainer's Keychain; keep an exported backup somewhere safe. Existing users update through Sparkle either way. The cask only matters for new `brew` installs.
 

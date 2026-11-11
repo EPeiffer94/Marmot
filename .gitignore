@@ -14,3 +14,6 @@ DerivedData/
 *.zip
 AppIcon.iconset/
 docs/show-hn-draft.md
+
+# Python
+__pycache__/

@@ -4,6 +4,8 @@
 #
 # Usage: sh scripts/make-appcast-entry.sh                     (uses the Makefile VERSION)
 #        sh scripts/make-appcast-entry.sh Marmot-2.1.0.zip 2.1.0
+#        NOTES_FILE=notes.md sh scripts/make-appcast-entry.sh  (adds release notes,
+#            shown in the in-app update window)
 #
 # The version and build number are read from the app INSIDE the zip, so the
 # appcast always matches what users download — even if you re-run this after
@@ -31,15 +33,24 @@ SIGN=$(find .build/artifacts -name sign_update -type f 2>/dev/null | head -1)
 
 SIG_ATTRS=$("$SIGN" "$ZIP")
 
-export ZIP VER SIG_ATTRS BUILD_NUM
+NOTES_HTML=""
+if [ -n "${NOTES_FILE:-}" ]; then
+    [ -f "$NOTES_FILE" ] || { echo "Release notes not found: $NOTES_FILE"; exit 1; }
+    NOTES_HTML=$(python3 scripts/notes_to_html.py "$NOTES_FILE")
+fi
+
+export ZIP VER SIG_ATTRS BUILD_NUM NOTES_HTML
 python3 << 'EOF'
 import os
 import email.utils
 
 zip_name = os.path.basename(os.environ["ZIP"])
 ver = os.environ["VER"]
+notes = os.environ.get("NOTES_HTML", "").strip()
+# Sparkle shows <description> HTML as the release notes in the update window.
+desc = f"\n      <description><![CDATA[\n{notes}\n      ]]></description>" if notes else ""
 item = f"""    <item>
-      <title>Marmot {ver}</title>
+      <title>Marmot {ver}</title>{desc}
       <pubDate>{email.utils.formatdate(localtime=True)}</pubDate>
       <sparkle:version>{os.environ["BUILD_NUM"]}</sparkle:version>
       <sparkle:shortVersionString>{ver}</sparkle:shortVersionString>
