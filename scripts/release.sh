@@ -19,8 +19,9 @@ set -Eeuo pipefail
 # before doing anything, so a syntax problem can't stop a release halfway.
 "$BASH" -n "$0" || { echo "release.sh has a syntax error for this bash ($BASH_VERSION)."; exit 1; }
 cd "$(dirname "$0")/.."
-# Finder/Terminal launches can miss Homebrew's folder (where gh lives).
-export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+# Finder/Terminal launches can miss Homebrew's folder (where gh lives) and
+# ~/.local/bin (where Claude Code's installer puts `claude`).
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH:$HOME/.local/bin"
 
 BUMP="${1:-patch}"
 MODE="${2:-}"            # "", "dry" or "resume"
@@ -159,6 +160,72 @@ print(".".join(map(str, new)))
 PY
 }
 
+# Rewrites the draft (file $1) into plain-language notes for users, using
+# Claude Code's command-line tool and your Claude login. Prints the notes;
+# fails (so the caller falls back to the draft) if Claude Code isn't
+# installed or signed in, takes over 5 minutes, or returns something odd.
+rewrite_notes() {
+    local draft="$1" dir
+    command -v claude >/dev/null 2>&1 || return 1
+    dir=$(mktemp -d)
+    {
+        cat <<'TXT'
+You write the release notes for Marmot, a free Mac app that cleans up disk space safely. The readers are ordinary Mac users, not developers.
+
+Below are the raw changes in this release (pull request titles and descriptions, and commit messages), and the previous release's notes as an example of the style to match.
+
+Rules:
+- Plain, everyday language. Short sentences. Say what changed and why it matters to the user.
+- Only include changes a user could notice: new features, fixes, safety, speed, wording.
+- Leave out internal work: tests, CI, release scripts, refactoring, developer docs, and dependency updates that don't change anything a user sees.
+- Never invent or exaggerate. If you can't tell what a change means for users, leave it out.
+- Format: one short summary sentence, then a "- " bullet per change. Only if there are more than 5 bullets, group them under short **bold** headings.
+- No emoji, no marketing words (exciting, seamless, powerful, game-changing), no "we're thrilled".
+- If nothing in this release is user-facing, write exactly: Behind-the-scenes improvements to keep Marmot reliable. Nothing changes in how you use it.
+- Output only the release notes in Markdown. Nothing before or after them.
+TXT
+        echo ""
+        echo "<previous_release_notes>"
+        awk '/^## /{n++} n==1' CHANGELOG.md 2>/dev/null | tail -n +2
+        echo "</previous_release_notes>"
+        echo ""
+        echo "<changes>"
+        cat "$draft"
+        echo "</changes>"
+    } > "$dir/prompt.txt"
+    # Runs in an empty folder so nothing from this repo is loaded, with no
+    # tool permissions: it only reads the text piped in and writes notes.
+    if ! (cd "$dir" && perl -e 'alarm shift @ARGV; exec @ARGV' 300 \
+            claude -p "Write the release notes as instructed in the input." \
+            --permission-mode dontAsk --output-format text \
+            < prompt.txt > notes.md 2> error.log); then
+        rm -rf "$dir"
+        return 1
+    fi
+    if ! python3 - "$dir/notes.md" <<'PY'
+import re, sys
+text = open(sys.argv[1]).read().strip()
+text = re.sub(r"^```[a-z]*\n|\n```$", "", text).strip()          # stray code fences
+lines = text.splitlines()
+if lines and re.match(r"^(here|sure|okay)\b", lines[0], re.I):    # stray preamble
+    text = "\n".join(lines[1:]).strip()
+if not re.search(r"[A-Za-z]", text) or "<!--" in text or len(text) > 6000:
+    sys.exit(1)
+print(text)
+PY
+    then
+        rm -rf "$dir"
+        return 1
+    fi
+    rm -rf "$dir"
+}
+
+show_notes() {
+    echo ""
+    sed 's/^/    /' "$1"
+    echo ""
+}
+
 # ---------------------------------------------------------------- checks
 say "Checking everything before changing anything"
 
@@ -245,8 +312,9 @@ fi
 
 TAG="v$NEW"
 ZIP="Marmot-$NEW.zip"
-NOTES=".build/release-notes-$NEW.md"
-FINAL=".build/release-notes-$NEW.final.md"
+DRAFT=".build/release-notes-$NEW.draft.md"   # raw: PR titles, commits
+NOTES=".build/release-notes-$NEW.md"         # what will be published (before confirming)
+FINAL=".build/release-notes-$NEW.final.md"   # locked in once you confirm
 
 # Build now, before anything changes, so a broken build never leaves a
 # pushed version bump behind. The real build later reuses this work.
@@ -272,11 +340,31 @@ fi
 
 # ---------------------------------------------------------------- notes
 if [ ! -s "$FINAL" ]; then
-    [ -s "$NOTES" ] || draft_notes > "$NOTES"
-    say "Release notes: $NOTES"
-    open -e "$NOTES"
-    echo "  TextEdit opened the draft. Rewrite it for users, save, and close the window."
-    echo "  These notes go on the GitHub release, into the in-app update window, and into CHANGELOG.md."
+    # Write notes unless there are some already; an unedited raw draft
+    # (e.g. from an earlier run when Claude Code wasn't available) is retried.
+    if [ ! -s "$NOTES" ] || { grep -q '^<!-- Draft notes' "$NOTES" \
+            && { [ ! -s "$DRAFT" ] || cmp -s "$NOTES" "$DRAFT"; }; }; then
+        draft_notes > "$DRAFT"
+        say "Writing release notes for users (Claude Code)"
+        if rewrite_notes "$DRAFT" > "$NOTES.tmp"; then
+            mv "$NOTES.tmp" "$NOTES"
+            ok "Written"
+        else
+            rm -f "$NOTES.tmp"
+            cp "$DRAFT" "$NOTES"
+            if command -v claude >/dev/null 2>&1; then
+                warn "Claude Code couldn't write them (is it signed in? run: claude). Using the raw draft."
+            else
+                warn "Claude Code isn't installed, so here's the raw draft to rewrite yourself."
+            fi
+        fi
+    fi
+    say "Release notes (GitHub release, in-app update window and CHANGELOG.md)"
+    show_notes "$NOTES"
+    if grep -q '^<!--' "$NOTES"; then
+        open -e "$NOTES"
+        echo "  This is the raw draft. TextEdit opened it: rewrite it for users, save, and close the window."
+    fi
 fi
 
 if [ "$MODE" = "dry" ]; then
@@ -287,11 +375,19 @@ if [ "$MODE" = "dry" ]; then
 fi
 
 echo ""
-if [ "$MODE" = "resume" ]; then
-    read -r -p "  Type $NEW to continue releasing it (anything else stops): " CONFIRM
-else
-    read -r -p "  Type $NEW to release it (anything else cancels): " CONFIRM
-fi
+while :; do
+    if [ "$MODE" = "resume" ]; then
+        read -r -p "  Type $NEW to continue releasing it (anything else stops): " CONFIRM
+    elif [ -s "$FINAL" ]; then
+        read -r -p "  Type $NEW to release it (anything else cancels): " CONFIRM
+    else
+        read -r -p "  Type $NEW to release it, e to edit the notes first (anything else cancels): " CONFIRM
+    fi
+    [ "$CONFIRM" = "e" ] && [ ! -s "$FINAL" ] && [ "$MODE" != "resume" ] || break
+    open -e "$NOTES"
+    read -r -p "  Edit the notes in TextEdit, save, close the window, then press Return: " _
+    show_notes "$NOTES"
+done
 if [ "$CONFIRM" != "$NEW" ]; then
     trap - ERR
     if [ -f "$STATE" ]; then echo "Stopped. Finish later with: make ship RESUME=1"
@@ -458,7 +554,7 @@ else
 fi
 
 # The zip is safely on GitHub (checked above); don't let them pile up here.
-rm -f "$ZIP" "$NOTES" "$FINAL" "$STATE" .build/notes-commits.tsv .build/notes-prs.json
+rm -f "$ZIP" "$DRAFT" "$NOTES" "$FINAL" "$STATE" .build/notes-commits.tsv .build/notes-prs.json
 trap - ERR
 say "Marmot $NEW is released"
 echo "  https://github.com/$REPO/releases/tag/$TAG"

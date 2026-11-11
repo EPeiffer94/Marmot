@@ -80,7 +80,7 @@ Or double-click `scripts/Release Marmot.command` in Finder.
 - The Homebrew tap (`../homebrew-marmot`) is clean.
 - The app builds, and the Sparkle signing key works.
 
-Next it drafts release notes from merged pull requests and commits, and opens them in TextEdit. It then asks you to type the version to confirm. After that:
+Next it writes plain-language release notes for users from merged pull requests and commits. It uses Claude Code's command-line tool (`claude`) with your Claude login, and shows the notes in Terminal. Without Claude Code, it opens a raw draft in TextEdit instead. It then asks you to type the version to confirm, or `e` to edit the notes first. After that:
 1. Bumps `VERSION` and builds the zip.
 2. Signs the feed entry, with the notes shown in the in-app update window.
 3. Updates the cask and adds the notes to `CHANGELOG.md`.
