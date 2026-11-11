@@ -8,6 +8,28 @@
     <!-- MARMOT_APPCAST_ITEMS -->
     <item>
       <title>Marmot 4.1.0</title>
+      <description><![CDATA[
+<p>Safety and accuracy update.</p>
+<h3>Safer cleaning</h3>
+<ul>
+<li>A folder that contains something on your Protected Paths list is now skipped as a whole, instead of taking the protected item to the Trash with it.</li>
+<li>Uninstalling a running app now waits until the app has actually quit. Time Capsule backups are tested before anything is removed, and cancelling the save dialog cancels the uninstall.</li>
+<li>Autopilot only cleans low-risk items, and only empties Trash items that have been there for 7 days or more.</li>
+<li>Leftover app data is checked with macOS before it's called orphaned, and build folders are only pre-selected when their project file is next to them.</li>
+</ul>
+<h3>Undo you can count on</h3>
+<ul>
+<li>Every item is recorded in History the moment it's moved, so Undo works even if a clean is interrupted.</li>
+<li>Apps moved to the Trash through Finder can now be restored too. Results show which items can be undone.</li>
+</ul>
+<h3>Honest numbers</h3>
+<ul>
+<li>Overlapping cleanup locations are counted once, so the total is no longer inflated.</li>
+<li>"Moved to Trash" and "Deleted" are shown separately, and emptying the Trash no longer counts the same space twice.</li>
+<li>Duplicates are confirmed byte for byte before they're shown.</li>
+<li>Disk Map no longer misplaces folders after one it can't read, and cancelled scans no longer affect Folder Trends.</li>
+</ul>
+      ]]></description>
       <pubDate>Wed, 11 Nov 2026 08:37:58 -0500</pubDate>
       <sparkle:version>165</sparkle:version>
       <sparkle:shortVersionString>4.1.0</sparkle:shortVersionString>
