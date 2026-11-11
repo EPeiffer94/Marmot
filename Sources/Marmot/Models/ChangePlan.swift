@@ -148,9 +148,28 @@ struct ExecutionResult: Sendable {
     let results: [ItemResult]
     let finishedAt = Date()
 
-    var freedBytes: Int64 {
-        results.filter { $0.outcome == .done && ($0.item.action == .moveToTrash || $0.item.action == .deletePermanently) }
+    /// Bytes moved to the Trash. They still take up disk space until the
+    /// Trash is emptied.
+    var trashedBytes: Int64 {
+        results.filter { $0.outcome == .done && $0.item.action == .moveToTrash }
             .reduce(0) { $0 + $1.item.sizeBytes }
+    }
+    /// Bytes deleted outright (including emptying the Trash): space freed now.
+    var deletedBytes: Int64 {
+        results.filter { $0.outcome == .done && $0.item.action == .deletePermanently }
+            .reduce(0) { $0 + $1.item.sizeBytes }
+    }
+    /// Everything removed from its original place, trashed or deleted.
+    var removedBytes: Int64 { trashedBytes + deletedBytes }
+
+    /// Honest one-liner: trashed bytes aren't free disk space yet.
+    var removalSummary: String {
+        var parts: [String] = []
+        if trashedBytes > 0 { parts.append("Moved \(ByteFormat.string(trashedBytes)) to the Trash") }
+        if deletedBytes > 0 {
+            parts.append((parts.isEmpty ? "Deleted " : "deleted ") + ByteFormat.string(deletedBytes))
+        }
+        return parts.isEmpty ? "Nothing was removed" : parts.joined(separator: ", ")
     }
     var wouldFreeBytes: Int64 {
         results.filter { $0.outcome == .wouldRemove }.reduce(0) { $0 + $1.item.sizeBytes }

@@ -4,6 +4,7 @@ import SwiftUI
 struct FreedToast: Identifiable {
     let id = UUID()
     var freed: Int64 = 0
+    var summary: String = ""
     var restorables: [ItemResult] = []
     var restoredMessage: String?
 
@@ -40,7 +41,7 @@ struct FreedToastView: View {
             } else {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Text("Freed \(ByteFormat.string(toast.freed))")
+                Text(toast.summary.isEmpty ? "Freed \(ByteFormat.string(toast.freed))" : toast.summary)
                     .font(.callout.weight(.semibold).monospacedDigit())
                 if !toast.restorables.isEmpty {
                     Button("Undo", action: onUndo)

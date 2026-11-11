@@ -322,7 +322,7 @@ struct PlanPreviewView: View {
                     Button("Done") {
                         // Let the main window show the freed-space toast
                         // (with Undo) once the sheet is out of the way.
-                        if result.freedBytes > 0 {
+                        if result.removedBytes > 0 {
                             NotificationCenter.default.post(
                                 name: .marmotPlanApplied, object: nil,
                                 userInfo: ["result": result])
@@ -387,11 +387,23 @@ struct ResultsView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 24) {
-                summaryStat(
-                    icon: result.dryRun ? "eye" : "checkmark.seal.fill",
-                    color: result.dryRun ? .blue : .green,
-                    title: result.dryRun ? "Would free" : "Freed",
-                    value: ByteFormat.string(result.dryRun ? result.wouldFreeBytes : result.freedBytes))
+                if result.dryRun {
+                    summaryStat(icon: "eye", color: .blue, title: "Would remove",
+                                value: ByteFormat.string(result.wouldFreeBytes))
+                } else {
+                    // Trash moves and deletions are shown apart: only the
+                    // second is free disk space right now.
+                    if result.trashedBytes > 0 || result.deletedBytes == 0 {
+                        summaryStat(icon: "trash.fill", color: .green,
+                                    title: "Moved to Trash (freed when emptied)",
+                                    value: ByteFormat.string(result.trashedBytes))
+                    }
+                    if result.deletedBytes > 0 {
+                        summaryStat(icon: "checkmark.seal.fill", color: .green,
+                                    title: "Deleted (space freed)",
+                                    value: ByteFormat.string(result.deletedBytes))
+                    }
+                }
                 summaryStat(icon: "list.bullet", color: .secondary,
                             title: "Items processed", value: "\(result.results.count)")
                 if !result.failures.isEmpty {

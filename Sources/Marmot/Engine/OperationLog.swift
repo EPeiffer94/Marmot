@@ -110,13 +110,28 @@ extension OperationLog {
     }
 
     /// Pure aggregation — separated for testability.
-    static func aggregate(_ entries: [LogEntry], now: Date = Date()) -> FreedStats {
+    /// Real removals with each byte counted once. Emptying the Trash in
+    /// Marmot permanently deletes items Marmot itself trashed earlier; those
+    /// bytes were already counted when they went to the Trash.
+    static func countedRemovals(_ entries: [LogEntry]) -> [LogEntry] {
         let removals = entries.filter {
             !$0.dryRun
                 && $0.outcome == ItemOutcome.done.rawValue
                 && ($0.action == ChangeAction.moveToTrash.rawValue
                     || $0.action == ChangeAction.deletePermanently.rawValue)
         }
+        let trashedLocations = Set(removals.compactMap { entry -> String? in
+            guard entry.action == ChangeAction.moveToTrash.rawValue, let to = entry.trashedTo else { return nil }
+            return SafetyRules.pathKey(SafetyRules.normalize(to))
+        })
+        return removals.filter {
+            $0.action != ChangeAction.deletePermanently.rawValue
+                || !trashedLocations.contains(SafetyRules.pathKey(SafetyRules.normalize($0.target)))
+        }
+    }
+
+    static func aggregate(_ entries: [LogEntry], now: Date = Date()) -> FreedStats {
+        let removals = countedRemovals(entries)
         var stats = FreedStats()
         let week = now.addingTimeInterval(-7 * 86400)
         let month = now.addingTimeInterval(-30 * 86400)

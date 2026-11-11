@@ -152,7 +152,7 @@ final class Autopilot: ObservableObject {
                                   source: "Autopilot", items: items)
             let result = await PlanExecutor.execute(plan, dryRun: false, allowPurgeRoots: false)
 
-            self.markRan(rule, freed: result.freedBytes)
+            self.markRan(rule, freed: result.removedBytes)
             let emptiedTrash = result.results.contains {
                 $0.outcome == .done && $0.item.action == .deletePermanently
             }
@@ -161,8 +161,8 @@ final class Autopilot: ObservableObject {
                 : "Everything is logged in History and restorable from the Trash."
             Notifier.post(
                 title: "Autopilot: \(rule.name)",
-                body: result.freedBytes > 0
-                    ? "Freed \(ByteFormat.string(result.freedBytes)). " + restoreNote
+                body: result.removedBytes > 0
+                    ? result.removalSummary + ". " + restoreNote
                     : "Nothing to clean this time.",
                 identifier: "marmot.autopilot.\(rule.id)")
             CleanupModel.shared.rescan()

@@ -16,12 +16,7 @@ struct WrappedStats {
 enum Wrapped {
 
     static func stats(from entries: [LogEntry]) -> WrappedStats {
-        let removals = entries.filter {
-            !$0.dryRun
-                && $0.outcome == ItemOutcome.done.rawValue
-                && ($0.action == ChangeAction.moveToTrash.rawValue
-                    || $0.action == ChangeAction.deletePermanently.rawValue)
-        }
+        let removals = OperationLog.countedRemovals(entries)
         var stats = WrappedStats()
         var bySource: [String: Int64] = [:]
         var days = Set<Date>()
