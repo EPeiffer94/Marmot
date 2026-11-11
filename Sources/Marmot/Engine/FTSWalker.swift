@@ -19,7 +19,12 @@ enum FTSWalker {
     /// Walks `root` depth-first.
     /// - `directoryPre` fires on entering a directory (root included,
     ///   level 0); return `.skip` to prune it without descending.
-    /// - `directoryPost` fires when a descended directory is complete.
+    /// - `directoryPost` fires exactly once for every directory whose
+    ///   `directoryPre` returned `.descend` — including unreadable ones —
+    ///   and never for skipped ones. (Raw fts is less tidy: a skipped
+    ///   directory still gets an FTS_DP visit, and an unreadable one gets
+    ///   FTS_D then FTS_DNR with no FTS_DP at all. Callers that keep a
+    ///   stack of open folders would otherwise pop the wrong one.)
     /// - `file` fires for every regular file with its stat data.
     /// Symlinks, unreadable directories, and stat failures are skipped.
     /// Returns false if the walk couldn't start (unreadable root) so
@@ -43,6 +48,9 @@ enum FTSWalker {
         guard let fts = fts_open(argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return false }
         defer { fts_close(fts) }
 
+        // Directories entered with .descend and not yet closed.
+        var open = Set<String>()
+
         while let entry = fts_read(fts) {
             if isCancelled() { break }
             let info = Int32(entry.pointee.fts_info)
@@ -53,9 +61,15 @@ enum FTSWalker {
             case FTS_D:
                 if directoryPre(path, level, entry.pointee.fts_statp) == .skip {
                     _ = fts_set(fts, entry, FTS_SKIP)
+                } else {
+                    open.insert(path)
                 }
-            case FTS_DP:
-                directoryPost(path, level)
+            case FTS_DP, FTS_DNR, FTS_ERR:
+                // FTS_DNR/FTS_ERR close an entered directory that couldn't
+                // be read; on anything else they're ignored.
+                if open.remove(path) != nil {
+                    directoryPost(path, level)
+                }
             case FTS_F:
                 if let st = entry.pointee.fts_statp {
                     file(path, level, st)

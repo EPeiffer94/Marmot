@@ -24,6 +24,16 @@ struct DiskMapView: View {
             } else if let node = model.currentNode {
                 breadcrumb(node)
                 Divider()
+                if model.partial {
+                    Label("Scan cancelled. Sizes only cover what was scanned before you stopped it.",
+                          systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                    Divider()
+                }
                 if let movers = model.folderMovers, node.id == model.rootNode?.id {
                     moversStrip(movers)
                     Divider()
