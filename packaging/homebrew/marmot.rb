@@ -7,7 +7,7 @@ cask "marmot" do
 
   url "https://github.com/Kasakir-AI/Marmot/releases/download/v#{version}/Marmot-#{version}.zip"
   name "Marmot"
-  desc "Free, open-source Mac cleaner that shows everything before it touches anything"
+  desc "Free, open-source disk cleaner that shows everything before it touches anything"
   homepage "https://github.com/Kasakir-AI/Marmot"
 
   # Marmot updates itself via Sparkle after install.
@@ -15,6 +15,9 @@ cask "marmot" do
   depends_on macos: :tahoe
 
   app "Marmot.app"
+
+  # Quit Marmot first so upgrades and uninstalls replace or remove it cleanly.
+  uninstall quit: "dev.marmot.app"
 
   zap trash: [
     "~/Library/Application Support/Marmot",

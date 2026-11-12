@@ -2,6 +2,12 @@
 
 Every Marmot release, newest first. Downloads are on [GitHub Releases](https://github.com/Kasakir-AI/Marmot/releases).
 
+## Unreleased
+
+For people who build Marmot themselves; nothing changes in the app.
+- `make` now builds `build.noindex/Marmot.app` instead of `Marmot.app` in the project folder, and tells Launch Services to forget it. Spotlight skips `.noindex` folders, so only the installed Marmot shows up in Spotlight, Launchpad and search. A leftover `Marmot.app` from older builds is removed on the next build.
+- The Homebrew cask quits Marmot before an upgrade or uninstall, so the app is replaced cleanly.
+
 ## 4.1.0 (2026-11-11)
 
 Safety and accuracy update.

@@ -56,7 +56,7 @@ on_error() {
     else
         printf 'Users are not offered the update yet.\n' >&2
     fi
-    printf 'Fix the problem above, then finish with:\n  cd ~/Claude/Projects/"MacOS app"\n  make ship RESUME=1\n' >&2
+    printf 'Fix the problem above, then finish with:\n  cd %q\n  make ship RESUME=1\n' "$PWD" >&2
 }
 trap on_error ERR
 

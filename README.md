@@ -121,6 +121,8 @@ cd Marmot
 make run
 ```
 
+The app is built in `build.noindex/Marmot.app`. Spotlight skips folders whose names end in `.noindex`, so a development build never shows up in Spotlight, Launchpad or search next to the Marmot you installed. `make clean` removes it.
+
 [CONTRIBUTING.md](CONTRIBUTING.md) covers the code layout, testing, common build errors and the release process.
 
 ## Support

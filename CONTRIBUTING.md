@@ -9,7 +9,7 @@ You'll need macOS 26+ and **full Xcode 26** — free from the App Store, no paid
 ```sh
 git clone https://github.com/Kasakir-AI/Marmot.git
 cd Marmot
-make run        # builds Marmot.app and launches it
+make run        # builds build.noindex/Marmot.app and launches it
 swift test      # runs the safety-rule test suite
 ```
 

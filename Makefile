@@ -4,7 +4,11 @@ APP_NAME = Marmot
 VERSION = 4.1.0
 BUILD_NUM = $(shell git rev-list --count HEAD 2>/dev/null || echo 1)
 BUILD_DIR = .build/release
-BUNDLE = $(APP_NAME).app
+# Built into a .noindex folder: Spotlight skips it, so development builds never
+# show up in Spotlight, Launchpad or search next to the installed app.
+OUT_DIR = build.noindex
+BUNDLE = $(OUT_DIR)/$(APP_NAME).app
+LSREGISTER = /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 CONTENTS = $(BUNDLE)/Contents
 RELEASE_ZIP = $(APP_NAME)-$(VERSION).zip
 
@@ -17,6 +21,8 @@ build:
 
 bundle: build
 	rm -rf $(BUNDLE)
+	@# Older builds wrote Marmot.app at the repo root; remove that copy so it stops showing in search.
+	@if [ -d $(APP_NAME).app ]; then $(LSREGISTER) -u "$(CURDIR)/$(APP_NAME).app" 2>/dev/null || true; rm -rf $(APP_NAME).app; fi
 	mkdir -p $(CONTENTS)/MacOS $(CONTENTS)/Resources
 	cp $(BUILD_DIR)/$(APP_NAME) $(CONTENTS)/MacOS/$(APP_NAME)
 	cp Resources/Info.plist $(CONTENTS)/Info.plist
@@ -38,7 +44,9 @@ bundle: build
 	cp -R "$$FMWK" $(CONTENTS)/Frameworks/
 	@install_name_tool -add_rpath @executable_path/../Frameworks $(CONTENTS)/MacOS/$(APP_NAME) 2>/dev/null || true
 	codesign --force --deep --sign - $(BUNDLE)
-	@echo "Built $(BUNDLE) — move it to /Applications or run: open $(BUNDLE)"
+	@# Make sure Launch Services forgets this copy if anything registered it.
+	@$(LSREGISTER) -u "$(CURDIR)/$(BUNDLE)" 2>/dev/null || true
+	@echo "Built $(BUNDLE) — run it with: make run (install releases with Homebrew)"
 
 run: bundle
 	open $(BUNDLE)
@@ -59,4 +67,5 @@ ship:
 	@bash scripts/release.sh $(BUMP) $(if $(RESUME),resume,$(if $(DRY),dry,))
 
 clean:
-	rm -rf .build $(BUNDLE)
+	@$(LSREGISTER) -u "$(CURDIR)/$(BUNDLE)" 2>/dev/null || true
+	rm -rf .build $(OUT_DIR) $(APP_NAME).app
